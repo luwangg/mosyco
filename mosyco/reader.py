@@ -2,6 +2,7 @@
 The reader module observes an operative system (in real-time) and pushes
 observed as well as simulated values to the inspector for analysis.
 """
+import logging as log
 from functools import wraps
 from helpers import load_dataframe
 
@@ -11,29 +12,33 @@ class Reader:
         # TODO: Schnittstelle 1 zu operativen Systemen und zu "Model"
         # For now pretend that these values come from a system:
         self.dataframe = load_dataframe()
-        self.systems = {
-            default_system: self.dataframe.loc[:, default_system],
-        }
+        self.systems = {}
+        self.set_current_system(default_system)
+        log.info("Initialized reader...")
 
-    def send_model_data(self, column_name='ProduktA'):
-        """Send model data in Batch. Returns pandas Series object."""
+
+    def get_model_data(self, column_name='ProduktA'):
+        """Send model data in batch. Returns pandas Series object."""
         return self.dataframe.loc[:, column_name]
 
-    def pick_system(fn):
-        """Decorate generators to emit actual values lazily."""
-        @wraps(fn)
-        def wrapper(self, system_name='PAcombi'):
-            print("Calling wrapper with {}".format(system_name))
-            return fn(self, system_name)
-        return wrapper
+    def actual_value_gen(self):
+        """Generate actual values from the currently active system. Returns a tuple."""
+        yield from self.systems.get(self.current_system)
 
-    @pick_system
-    def actual_value_gen(self, system_name='PAcombi'):
-        """Generate successive actual values and return them as a Seris object"""
-        series = self.dataframe.loc[:, system_name]
-        for entry in series:
+    def create_generator(self, system='PAcombi'):
+        series = self.dataframe.loc[:, system]
+        for entry in series.iteritems():
             yield entry
 
+    def set_current_system(self, system):
+        """Set the current system."""
+        # TODO: assert new system is a column name in DF
+        if system not in self.systems:
+            gen = self.create_generator(system)
+            self.systems[system] = gen
+            self.current_system = system
+        else:
+            self.current_system = system
 
 if __name__ == '__main__':
     reader = Reader()
