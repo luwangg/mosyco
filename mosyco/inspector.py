@@ -2,7 +2,6 @@ import socket
 import pandas as pd
 import pickle
 
-
 class Inspector:
     def __init__(self, server_address=('localhost', 10000), buffer_size=4096):
         self.server_address = server_address

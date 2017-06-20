@@ -2,38 +2,52 @@
 The reader module observes an operative system (in real-time) and pushes
 observed as well as simulated values to the inspector for analysis.
 """
-import socket
-import pandas as pd
-import pickle
-from asyncio import sleep
+from functools import wraps
+from helpers import load_dataframe
 
 class Reader:
 
     # TODO: what server address to use?
-    def __init__(self, server_address=('localhost', 10000), buffer_size=4096):
-        self.server_address = server_address
-        self.buffer_size = buffer_size
-
-        # CSV file contains simulated and multiple versions of actual data
-        # for a single product
-
+    def __init__(self):
         # TODO: Schnittstelle 1 zu operativen Systemen und zu "Model"
         # For now pretend that these values come from a system:
-        df = pd.read_csv('../data/produktA-data.csv')
-        # TODO: proper naming conventions for columns
-        self.dataframe = df.drop(['Unnamed: 0'], axis=1)
+        self.dataframe = load_dataframe()
+
+        # TODO: multiple live systems - have a dictionary of systems and
+        # feed
+        self.systems = {}
 
 
-    def run(self):
-        print('connecting to {} on port {}'.format(*self.server_address))
-        with socket.create_connection(self.server_address) as sock:
-            for i, row in self.dataframe.iterrows():
-                # TODO: split data into simulated and actual here and push them separately?
-                data = pickle.dumps(row)
-                # sock.sendall(row.to_json().encode())
-                sock.sendall(data)
-                sleep(0.5)
-        print('the reader has finished sending data...')
+    def send_model_data(self, column_name='ProduktA'):
+        return self.dataframe.loc[:, column_name]
+
+    # build generator that pops out value for each live system
+    def generate_values(self, system_name='PAcombi'):
+        series = self.dataframe.loc[:, system_name]
+        for entry in series:
+            yield entry
+
+# =================================
+
+    def choose_system(f):
+        @wraps(f)
+        def wrapper(*args, **kwds):
+            print 'Calling decorated function'
+            return f(*args, **kwds)
+        return wrapper
+
+    @choose_system
+    def example(self, system):
+        """Docstring"""
+        print 'Called example function'
+
+# =================================
+
+    class LiveSystem:
+        def __init__(self, column_name='PAcombi'):
+            self.series =
+
+
 
 
 if __name__ == '__main__':
