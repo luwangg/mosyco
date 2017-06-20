@@ -6,50 +6,34 @@ from functools import wraps
 from helpers import load_dataframe
 
 class Reader:
-
-    # TODO: what server address to use?
-    def __init__(self):
+    # default_system is the name of the column of the actual values (IST-Werte)
+    def __init__(self, default_system='PAcombi'):
         # TODO: Schnittstelle 1 zu operativen Systemen und zu "Model"
         # For now pretend that these values come from a system:
         self.dataframe = load_dataframe()
-
-        # TODO: multiple live systems - have a dictionary of systems and
-        # feed
-        self.systems = {}
-
+        self.systems = {
+            default_system: self.dataframe.loc[:, default_system],
+        }
 
     def send_model_data(self, column_name='ProduktA'):
+        """Send model data in Batch. Returns pandas Series object."""
         return self.dataframe.loc[:, column_name]
 
-    # build generator that pops out value for each live system
-    def generate_values(self, system_name='PAcombi'):
+    def pick_system(fn):
+        """Decorate generators to emit actual values lazily."""
+        @wraps(fn)
+        def wrapper(self, system_name='PAcombi'):
+            print("Calling wrapper with {}".format(system_name))
+            return fn(self, system_name)
+        return wrapper
+
+    @pick_system
+    def actual_value_gen(self, system_name='PAcombi'):
+        """Generate successive actual values and return them as a Seris object"""
         series = self.dataframe.loc[:, system_name]
         for entry in series:
             yield entry
 
-# =================================
-
-    def choose_system(f):
-        @wraps(f)
-        def wrapper(*args, **kwds):
-            print 'Calling decorated function'
-            return f(*args, **kwds)
-        return wrapper
-
-    @choose_system
-    def example(self, system):
-        """Docstring"""
-        print 'Called example function'
-
-# =================================
-
-    class LiveSystem:
-        def __init__(self, column_name='PAcombi'):
-            self.series =
-
-
-
 
 if __name__ == '__main__':
     reader = Reader()
-    reader.run()

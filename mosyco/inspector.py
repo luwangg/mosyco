@@ -7,6 +7,9 @@ class Inspector:
         self.server_address = server_address
         self.buffer_size = buffer_size
 
+    def dummy(self):
+        return
+
     def run(self):
         print('listening on port {}'.format(self.server_address[1]))
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
