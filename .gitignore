@@ -1,3 +1,5 @@
+ignored-by-git/
+
 __pycache__/
 *.py[cod]
 *$py.class
