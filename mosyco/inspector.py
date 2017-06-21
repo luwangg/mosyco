@@ -1,32 +1,24 @@
-import socket
 import pandas as pd
-import pickle
+import logging
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 class Inspector:
-    def __init__(self, server_address=('localhost', 10000), buffer_size=4096):
-        self.server_address = server_address
-        self.buffer_size = buffer_size
+    def __init__(self, index):
+        # Will share DateTimeIndex object with reader!
+        self.df = pd.DataFrame(index=index)
 
-    def dummy(self):
-        return
+    def receive_actual_value(self, val, system='PAcombi'):
+        """Fills inspector dataframe with actual values."""
+        # val is a tuple of (index, value)
+        self.df.set_value(val[0], system, val[1])
+        # if system not in self.df.columns:
 
-    def run(self):
-        print('listening on port {}'.format(self.server_address[1]))
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(self.server_address)
-            s.listen(1)
-            conn, addr = s.accept()
-            with conn:
-                print('Connected by', addr)
-                while True:
-                    data = conn.recv(self.buffer_size)
-                    if not data: break
-                    # print(row)
-                    obj = pickle.loads(data)
-                    print(obj)
-                    # do work here
-                    # conn.sendall(row)
+        #     log.info("Adding new column: data: {}, date: {}".format(val[1], val[0]))
+        #     self.df[system] = pd.Series(data=val, name=system)
+        # else:
+        #     self.df[system].append(val)
 
 if __name__ == '__main__':
-    inspector = Inspector()
-    inspector.run()
+    pass
