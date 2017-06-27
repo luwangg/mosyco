@@ -1,7 +1,7 @@
 # import asyncio
 
-from inspector import Inspector
-from reader import Reader
+from mosyco.inspector import Inspector
+from mosyco.reader import Reader
 
 import logging
 
