@@ -1,9 +1,9 @@
-# import asyncio
+# -*- coding: utf-8 -*-
+import asyncio
+import logging
 
 from mosyco.inspector import Inspector
 from mosyco.reader import Reader
-
-import logging
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -13,14 +13,13 @@ log = logging.getLogger(__name__)
 def main():
     log.info('Starting mosyco...')
 
-    inspector = Inspector()
-    inspector.dummy()
     reader = Reader()
+    inspector = Inspector(reader.df.index, reader.df.ProduktA)
 
     for val in reader.actual_value_gen():
-        log.debug(val)
+        log.info(val)
         inspector.receive_actual_value(val)
-        break
+        asyncio.sleep(0.5)
 
     log.info('...finished!')
 

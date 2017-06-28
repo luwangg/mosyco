@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 This module contains various methods for calculating erros and evaluate
 deviations between actual and simulated values.
@@ -8,13 +9,21 @@ should be adjusted.
 
 
 def absolute_deviation(simulated, observed, threshold):
+
     return abs(simulated - observed) > threshold
 
 def relative_deviation(simulated, observed, threshold):
-    return abs(simulated - observed) / simulated > threshold
+    # TODO: try except ZeroDivisionError handle properly
+    try:
+        1 / observed
+    except ZeroDivisionError:
+        observed = 0.00001
 
-def deviation_percent(simulated, observed):
-    return abs(simulated - observed) / observed * 100
+    dev = abs(simulated - observed) / observed
+    if dev > threshold:
+        return dev
+    else:
+        return False
 
 
 def exceeds_threshold(deviation, threshold):
