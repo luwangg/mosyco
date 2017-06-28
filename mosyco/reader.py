@@ -39,7 +39,3 @@ class Reader:
             self.current_system = system
         else:
             self.current_system = system
-
-if __name__ == '__main__':
-    reader = Reader()
-    data = reader.get_model_data()
