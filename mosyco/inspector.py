@@ -19,6 +19,9 @@ class Inspector:
         # add 'ds' column for fbprohet
         self.df['ds'] = self.df.index
 
+        # TODO: better way to integrate forecasts without polluting df
+        self.forecasts = {}
+
     def receive_actual_value(self, val, system='PAcombi'):
         """Fills inspector dataframe with actual values."""
         # val is a tuple of (index, value)
@@ -88,19 +91,12 @@ class Inspector:
 
         # TODO: entries for year MUST be empty, else this will raise an exception?!
         # double check / assert here that year is in df
-        fc_frame = self.df.loc[str(year)].copy()
+        fc_frame = self.df.loc[str(year), 'ds'].copy()
+        # fc_frame = pd.DataFrame(data=self.df.index)
         # returns new dataframe
 
         # EXPENSIVE - CAN TAKE VERY LONG
         new_forecast = self.forecasting_model.predict(fc_frame)
+        del fc_frame
         # needs to be merged into existing one
-
-
-
-
-        # future = self.forecasting_model.predict()
-
-
-
-if __name__ == '__main__':
-    pass
+        self.forecasts[str(year)] = new_forecast
