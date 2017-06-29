@@ -2,12 +2,12 @@
 import pandas as pd
 from fbprophet import Prophet
 
+from mosyco.helpers import load_dataframe
 
-df = pd.read_csv('../data/produktA-data.csv')
-df = df.drop(['Unnamed: 0'], axis=1)
+df = load_dataframe()
 print(df.head())
 model = Prophet()
-df['ds'] = df['Date']
+df['ds'] = df.index
 df['y'] = df['PAcombi']
 
 model.fit(df)

@@ -6,7 +6,7 @@ from os import path
 
 def load_dataframe():
     # TODO: proper naming conventions for columns
-    df = pd.read_csv(path.join(path.dirname(__file__), '../data/productA-data.csv'),
+    df = pd.read_csv(path.join('data/productA-data.csv'),
                                     index_col=1, parse_dates=True,
                                     infer_datetime_format=True)
     # sanitize dataframe

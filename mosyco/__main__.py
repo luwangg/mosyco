@@ -14,12 +14,23 @@ def main():
     log.info('Starting mosyco...')
 
     reader = Reader()
-    inspector = Inspector(reader.df.index, reader.df.ProduktA)
+    inspector = Inspector(reader.df.index, reader.df.PAmodel)
+
+    iterations = 0
 
     for val in reader.actual_value_gen():
-        log.info(val)
+        log.debug(val[0])
         inspector.receive_actual_value(val)
+        if val[0].month == 12 and val[0].day == 31:
+            log.debug('a year has passed')
+
+
+
         asyncio.sleep(0.5)
+        iterations += 1
+        # if iterations > 5:
+        #     break
+
 
     log.info('...finished!')
 
