@@ -20,7 +20,7 @@ class Inspector:
         self.df['ds'] = self.df.index
 
         # TODO: better way to integrate forecasts without polluting df
-        self.forecasts = {}
+        self.forecast = pd.DataFrame(index=index)
 
     def receive_actual_value(self, val, system='PAcombi'):
         """Fills inspector dataframe with actual values."""
@@ -98,5 +98,10 @@ class Inspector:
         # EXPENSIVE - CAN TAKE VERY LONG
         new_forecast = self.forecasting_model.predict(fc_frame)
         del fc_frame
-        # needs to be merged into existing one
+
         self.forecasts[str(year)] = new_forecast
+        # needs to be merged into existing one
+        # self.forecast.update(new_forecast)
+        # make sure to sort out indeces first:
+        # new_forecast has integer index but needs DateTimeIndex!!!
+        # self.forecast.join(new_forecast)
