@@ -21,9 +21,9 @@ def relative_deviation(simulated, observed, threshold):
 
     dev = abs(simulated - observed) / observed
     if dev > threshold:
-        return dev
+        return (True, dev)
     else:
-        return False
+        return (False, dev)
 
 
 def exceeds_threshold(deviation, threshold):
