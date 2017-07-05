@@ -6,6 +6,7 @@ import logging
 from fbprophet import Prophet
 
 import mosyco.methods as methods
+import mosyco.helpers as helpers
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -142,7 +143,8 @@ class Inspector:
 
         # No custom settings for model, b/c we are predicting what we already
         # know anyways
-        self.forecasting_model = Prophet().fit(self.df)
+        with helpers.silence():
+            self.forecasting_model = Prophet().fit(self.df)
 
 
 
@@ -158,6 +160,7 @@ class Inspector:
         prediction when enough new data has arrived.
 
         [https://github.com/facebookincubator/prophet/tree/master/python]
+        [https://research.fb.com/prophet-forecasting-at-scale/]
 
         The fitting takes a bit of time so it should not be done too frequently
         or else the overall performance of the application will suffer.
@@ -180,7 +183,8 @@ class Inspector:
         fc_frame = self.df.loc[str(period)].filter(['ds'])
 
         # EXPENSIVE - CAN TAKE VERY LONG
-        new_forecast = self.forecasting_model.predict(fc_frame)
+        with helpers.silence():
+            new_forecast = self.forecasting_model.predict(fc_frame)
         del fc_frame
 
         # new_forecast needs to have DateTimeIndex!!!

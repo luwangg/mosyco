@@ -4,7 +4,7 @@ The reader module observes an operative system (in real-time) and pushes
 observed as well as simulated values to the inspector for analysis.
 """
 import logging
-from mosyco.helpers import load_dataframe
+import mosyco.helpers as helpers
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ class Reader:
     def __init__(self, default_system='PAcombi'):
         # TODO: Schnittstelle 1 zu operativen Systemen und zu "Model"
         # For now pretend that these values come from a system:
-        self.df = load_dataframe()
+        self.df = helpers.load_dataframe()
         self.systems = {}
         self.set_current_system(default_system)
         log.info("Initialized reader...")

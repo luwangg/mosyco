@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import pandas as pd
-
-# import asyncio
-# import time
 import logging
 
 from mosyco.inspector import Inspector
@@ -12,7 +9,6 @@ from mosyco.reader import Reader
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-# loop = asyncio.get_event_loop()
 
 def main():
     log.info('Starting mosyco...')
@@ -25,7 +21,7 @@ def main():
     # the actual value generator simulates incoming data from a monitored system.
     # the reader reads this data and sends it to the inspector
 
-    count = 0
+    deviation_count = 0
 
     # main loop starts here:
     for (date, value) in reader.actual_value_gen():
@@ -57,13 +53,10 @@ def main():
 
         (exceeds_threshold, deviation) = inspector.eval_actual(date)
         if exceeds_threshold:
-            count += 1
-
-        # asyncio.sleep(0.5)
-        # time.sleep(0.1)
+            deviation_count += 1
 
     log.info('...finished!')
-    log.info(f'Total: {count} deviations deteced.')
+    log.info(f'Total: {deviation_count} deviations detected.')
 
 if __name__ == '__main__':
     main()

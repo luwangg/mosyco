@@ -8,8 +8,10 @@ should be adjusted.
 """
 
 
-def absolute_deviation(simulated, observed, threshold):
+# TODO: Docstrings
 
+
+def absolute_deviation(simulated, observed, threshold):
     return abs(simulated - observed) > threshold
 
 def relative_deviation(simulated, observed, threshold):
@@ -24,12 +26,3 @@ def relative_deviation(simulated, observed, threshold):
         return (True, dev)
     else:
         return (False, dev)
-
-
-def exceeds_threshold(deviation, threshold):
-    return deviation > threshold
-
-
-def evaluation():
-    """Assess deviation & provide ongoing feedback on model performance."""
-    return None
