@@ -6,17 +6,22 @@ import logging
 from mosyco.inspector import Inspector
 from mosyco.reader import Reader
 
-logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 
+# ========================================================================
+# TODO: read params from command
+model_name = 'PAmodel'
+actual_name = 'PAcombi'
+# ========================================================================
 
 def main():
     log.info('Starting mosyco...')
 
     # initialize reader and inspector
-    reader = Reader()
+    reader = Reader(actual_name)
     # TODO: remove PAmodel hard-coded ref
-    inspector = Inspector(reader.df.index, reader.df.PAmodel)
+    inspector = Inspector(reader.df.index, reader.df[model_name])
 
     # the actual value generator simulates incoming data from a monitored system.
     # the reader reads this data and sends it to the inspector
@@ -26,16 +31,13 @@ def main():
     # main loop starts here:
     for (date, value) in reader.actual_value_gen():
         # send value to inspector
-        inspector.receive_actual_value((date, value))
-
-        log.debug(date.date())
-
+        inspector.receive_actual_value((date, value), reader.current_system)
 
         # create a forecast every year and eval model based on it
         if date.month == 12 and date.day == 31:
             next_year = date.year + 1
 
-            log.info(f'current date: {date.date()} / value: {value:.2f}')
+            log.info(f'current date: {date.date()}')
 
             # model data ends July 2015 so we don't need a forecast for that year
             if not next_year == 2015:
@@ -51,12 +53,12 @@ def main():
                 inspector.eval_future(next_year)
 
 
-        (exceeds_threshold, deviation) = inspector.eval_actual(date)
+        (exceeds_threshold, deviation) = inspector.eval_actual(date, actual_name)
         if exceeds_threshold:
             deviation_count += 1
 
-    log.info('...finished!')
     log.info(f'Total: {deviation_count} deviations detected.')
+    log.info('...finished!')
 
 if __name__ == '__main__':
     main()
