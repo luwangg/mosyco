@@ -177,7 +177,7 @@ class Inspector:
         This is a very expensive operation. It creates a new Prophet object each
         time this function is called. The fitting can take up to 5 seconds on
         occasion but should generally be quite fast, thanks to
-        `PyStan <https://pystan.readthedocs.io/en/latest/>`.
+        `PyStan <https://pystan.readthedocs.io/en/latest/>`_.
 
         This is the bottleneck that restricts the real-time capability of this
         program. This implementation is therefore not suitable for use cases
@@ -208,7 +208,7 @@ class Inspector:
         For example, pd.Period('2011') & '2012-11' are valid periods.
 
         The forecasting is done with
-        `fbprophet <https://github.com/facebookincubator/prophet/tree/master/python>`
+        `fbprophet <https://github.com/facebookincubator/prophet/tree/master/python>`_
         on the bases already received actual data.
 
         Prophet works best with at least one year of historical data, so the default
@@ -216,7 +216,7 @@ class Inspector:
         prediction when enough new data has arrived.
 
         A good introduction to how fbprophet works can be found in their blog post
-        `here <https://research.fb.com/prophet-forecasting-at-scale/>`. Further
+        `here <https://research.fb.com/prophet-forecasting-at-scale/>`_. Further
         reading can be found in the \
         `paper <https://facebookincubator.github.io/prophet/static/prophet_paper_20170113.pdf>
 

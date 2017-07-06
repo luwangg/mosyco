@@ -25,4 +25,4 @@ Running::
 
 
 
-`Data Preparation <https://vab9.github.io/observer/>`
+`Data Preparation <https://vab9.github.io/observer/>`_
