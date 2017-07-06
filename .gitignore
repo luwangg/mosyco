@@ -1,5 +1,7 @@
 ignored-by-git/
 
+dist/
+
 .cache/
 
 __pycache__/
@@ -9,4 +11,3 @@ __pycache__/
 *.so
 .ipynb_checkpoints
 .python-version
-
