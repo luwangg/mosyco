@@ -5,6 +5,7 @@ MoSyCo
 This is the prototype for a Model-/System-Controller architecture.
 
 Installation:
+-------------
 
 Requires Python 3.6 or higher. Maybe just install the latest Anaconda.
 I also recommend using a virtualenv or conda environment. Then:
@@ -19,10 +20,13 @@ I also recommend using a virtualenv or conda environment. Then:
     pip install -r requirements.txt
 
 
-Running::
+Running:
+--------
+
+Execute::
 
     python -m mosyco
 
 
 
-`Data Preparation <https://vab9.github.io/observer/>`_
+`Link to the data preparation notebook <https://vab9.github.io/observer/>`_
