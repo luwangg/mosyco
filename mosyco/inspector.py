@@ -29,7 +29,6 @@ class Inspector:
     Attributes:
         df (DataFrame): holds model data and is filled with actual values.
         model_name (str): name of the model.
-        actual_system (str): name of the currently active actual system.
         forecast (DataFrame): is filled with forecasts in regular intervals.
         threshold (float): percentage threshold for actual-model deviations.
     """
@@ -44,7 +43,6 @@ class Inspector:
             model_column (Series): model data column, passed from reader in batch.
         """
         self.model_name = model_column.name
-        self.actual_system = None
         self.df = pd.DataFrame(data=model_column.copy(), index=index)
 
         # add 'ds' (Date) column for fbprohet
@@ -171,7 +169,7 @@ class Inspector:
 
 
     # TODO: remove hard-coded column ref. (PAcombi)
-    def _fit_model(self, system='PAcombi'):
+    def _fit_model(self, system):
         """Fit the model.
 
         This is a very expensive operation. It creates a new Prophet object each
@@ -201,7 +199,7 @@ class Inspector:
 
 
 
-    def forecast_year(self, period):
+    def forecast_year(self, period, actual_system):
         """Update forecast dataframe attribute with forecast for the given period.
 
         A period can be any pandas period object or period-like string.
@@ -232,7 +230,7 @@ class Inspector:
         # TODO: allow to set period to use for forecast.
 
         # EXPENSIVE - CAN TAKE VERY LONG
-        self._fit_model()
+        self._fit_model(actual_system)
 
         # TODO: entries for period MUST be empty, else this will raise an exception?!
         # double check / assert here that period is in df
