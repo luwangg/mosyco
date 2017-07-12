@@ -52,7 +52,7 @@ class Inspector:
         self.forecast = pd.DataFrame(index=index)
 
         # TODO: figure out where to get THRESHOLD from
-        self.threshold = 0.4
+        self.threshold = 0.2
         # \u00B1 is unicode for hte plus-minus character
         log.info(f"Using threshold: \u00B1{self.threshold:.2%}")
 
