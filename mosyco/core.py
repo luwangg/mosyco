@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 import logging
-import os
-import sys
 
 import pandas as pd
+import matplotlib
+matplotlib.use('TKAgg')
 import matplotlib.pylab as plt
 import matplotlib.animation as animation
 import numpy as np
@@ -83,7 +83,7 @@ if __name__ == '__main__':
 
     # must keep reference to ani, else it will be garbage collected
     ani = animation.FuncAnimation(fig, update, frames=None, fargs=[
-                                  ax, line, prediction_line, xdata], interval=1000, blit=False)
+                                  ax, line, prediction_line, xdata], interval=1000, blit=True)
 
     plt.show()
 
