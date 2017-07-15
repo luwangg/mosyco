@@ -27,9 +27,21 @@ class AnimatedPlot():
         self.fig, self.ax = plt.subplots()
         # Then setup FuncAnimation.
         self.ani = animation.FuncAnimation(self.fig, self.update,
+                                            init_func=self.setup_plot,
                                             frames=actual_value_gen,
                                             interval=5, blit=False)
 
+    def setup_plot(self):
+        """Set up the initial state of the plot."""
+        # x, y, s, c = next(self.stream)
+        # actual_data = self.inspector.df[self.system]
+        # self.actual_line = self.ax.plot(actual_data)[0]
+        # self.ax.axis('tight')
+        datemin = self.inspector.df.index.min()
+        datemax = self.inspector.df.index.max()
+        self.ax.set_xlim(datemin, datemax)
+        self.fig.autofmt_xdate()
+        return [self.ax]
 
     def update(self, new_value):
         """Update the plot."""
@@ -70,13 +82,18 @@ class AnimatedPlot():
         # need to make sure that new data has come in:
         try:
             actual_data = self.inspector.df[self.system]
-            self.actual_line = self.ax.plot(actual_data)[0]
+            if not hasattr(self, 'actual_line'):
+                self.actual_line = self.ax.plot(actual_data)[0]
+            else:
+                self.actual_line.set_xdata(actual_data[0])
+                self.actual_line.set_ydata(actual_data[1])
+                # self.actual_line.set_data(actual_data.values)
         except KeyError as e:
             log.info(f'No {self.system} data available for plotting yet')
             # dummy line
             self.actual_line = self.ax.plot([0, 0])
 
-        return self.actual_line, self.ax
+        return self.actual_line
 
 
     def show(self):
