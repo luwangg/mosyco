@@ -20,8 +20,6 @@ log = logging.getLogger(__name__)
 class AnimatedPlot():
     """An animated plot of mosyco."""
     def __init__(self, inspector, system, actual_value_gen):
-        plt.ion()
-        # self.stream = self.data_stream()
         self.inspector = inspector
         self.system = system
 
@@ -30,7 +28,7 @@ class AnimatedPlot():
         # Then setup FuncAnimation.
         self.ani = animation.FuncAnimation(self.fig, self.update,
                                             frames=actual_value_gen,
-                                            interval=5, blit=True)
+                                            interval=5, blit=False)
 
 
     def update(self, new_value):
@@ -46,11 +44,10 @@ class AnimatedPlot():
 
             # ======================================================================
             # REMOVE THIS
-            if next_year == 2000:
+            if next_year == 1997:
                 import sys
                 sys.exit()
             # ======================================================================
-
             log.info(f'current date: {date.date()}')
 
             # model data ends July 2015 so we don't need a forecast for that year
@@ -71,9 +68,6 @@ class AnimatedPlot():
         # ==============================================================================
 
         # need to make sure that new data has come in:
-        # TODO: how better? asyncio
-        time.sleep(0.1)
-        # TODO: try catch block for KeyError during first call
         try:
             actual_data = self.inspector.df[self.system]
             self.actual_line = self.ax.plot(actual_data)[0]
@@ -82,11 +76,12 @@ class AnimatedPlot():
             # dummy line
             self.actual_line = self.ax.plot([0, 0])
 
-        return self.actual_line,
+        return self.actual_line, self.ax
 
 
     def show(self):
         plt.show()
+        # self.fig.show()
 
 # ==============================================================================
 # read command line arguments & set log level

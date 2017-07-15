@@ -66,6 +66,8 @@ def update(n, *args):
 
 
 if __name__ == '__main__':
+    # plt.ion()
+
     # setup figure
     fig, ax = plt.subplots()
     # set up viewing window (in this case the 25 most recent values)
@@ -86,5 +88,6 @@ if __name__ == '__main__':
                                   ax, line, prediction_line, xdata], interval=1000, blit=True)
 
     plt.show()
+    print('miau')
 
     # plt.ion()

@@ -8,37 +8,41 @@ import logging
 log = logging.getLogger(__name__)
 
 class AnimatedPlot():
-    """An animated plot of mosyco."""
+    """An animated plot of mosyco.
+
+    Only init after system data is available in inspector or else
+    """
     def __init__(self, inspector, system, actual_value_gen):
-        plt.ion()
-        # self.stream = self.data_stream()
         self.inspector = inspector
         self.system = system
 
+        # interactive mode on?! TODO:
+        plt.ion()
         # Setup the figure and axes...
         self.fig, self.ax = plt.subplots()
         # Then setup FuncAnimation.
         self.ani = animation.FuncAnimation(self.fig, self.update,
                                             frames=actual_value_gen,
-                                            interval=5, blit=True)
+                                            # init_func=self.setup_plot,
+                                            interval=200, blit=True)
 
     def setup_plot(self):
         """Set up the initial state of the plot."""
         # x, y, s, c = next(self.stream)
-        actual_data = self.inspector.df[self.system]
-        self.actual_line = self.ax.plot(actual_data)[0]
+        # actual_data = self.inspector.df[self.system]
+        # self.actual_line = self.ax.plot(actual_data)[0]
         # self.ax.axis('tight')
 
         # For FuncAnimation's sake, we need to return the artist we'll be using
         # Note that it expects a sequence of artists, thus the trailing comma.
-        return self.actual_line,
+        # return self.actual_line,
+        return [self.ax]
 
 
     def update(self, i):
         """Update the plot."""
         # need to make sure that new data has come in:
         # TODO: how better? asyncio
-        time.sleep(0.1)
         # TODO: try catch block for KeyError during first call
         try:
             actual_data = self.inspector.df[self.system]
@@ -46,8 +50,9 @@ class AnimatedPlot():
         except KeyError as e:
             log.info(f'No {self.system} data available for plotting yet')
             # dummy line
-            self.actual_line = self.ax.plot([0, 0])
+            return self.ax.plot([0, 0])
 
+        plt.pause(0.0001)
         return self.actual_line,
 
         # is this enough? or set axis and move window?

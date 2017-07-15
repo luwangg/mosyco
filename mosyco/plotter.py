@@ -23,16 +23,21 @@ loop = asyncio.get_event_loop()
 reader = Reader(args.system)
 inspector = Inspector(reader.df.index, reader.df[args.model])
 
-ani_plot = AnimatedPlot(inspector, args.system)
+value_generator = reader.actual_value_gen()
+
+ani_plot = AnimatedPlot(inspector, args.system, value_generator)
 
 
 # ==============================================================================
 # main loop starts here:
-for (i, (date, value)) in enumerate(reader.actual_value_gen()):
+for (i, (date, value)) in enumerate(value_generator):
     # send value to inspector
     inspector.receive_actual_value((date, value), reader.current_system)
 
-    ani_plot.show()
+    # start animation after first iteration
+    if i == 1:
+        # ani_plot = AnimatedPlot(inspector, args.system)
+        ani_plot.show()
 
     # ======================================================================
     # REMOVE THIS
