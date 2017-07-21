@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import IPython
+
 import pandas as pd
 import logging
 
@@ -31,6 +33,12 @@ for (date, value) in reader.actual_value_gen():
     # send value to inspector
     inspector.receive_actual_value((date, value), reader.current_system)
 
+
+    if date.year == 2008 and date.month == 7:
+        inspector.df.to_pickle('df')
+        inspector.forecast.to_pickle('fc')
+        IPython.embed()
+
     # create a forecast every year and eval model based on it
     if date.month == 12 and date.day == 31:
         next_year = date.year + 1
@@ -40,16 +48,16 @@ for (date, value) in reader.actual_value_gen():
         # model data ends July 2015 so we don't need a forecast for that year
         if not next_year == 2015:
             # generate the new forecast
-            log.info(f'Generating forecast for {next_year}...')
-            inspector.forecast_year(pd.Period(next_year), args.system)
+            period = pd.Period(next_year)
+            log.info(f'Generating forecast for {period}...')
+            inspector.forecast_year(period, args.system)
             # forecast number is now in inspector.forecast dataframe
 
             # errors is a dataframe of the year with NaN values where the
             # model data falls outside the forecast confidence interval
             # TODO: could be used for plotting
             # errors = inspector.eval_future(next_year)
-            inspector.eval_future(next_year)
-
+            inspector.eval_future(period)
 
     (exceeds_threshold, deviation) = inspector.eval_actual(date, args.system)
     if exceeds_threshold:
