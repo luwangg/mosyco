@@ -37,20 +37,25 @@ class Mosyco():
         self.actual_line, = self.ax.plot(self.inspector.df.index,
                                         [0 for i in range(len(self.inspector.df))])
 
-        self.ax.set_ylim(0, 2000)
+        self.ax.set_ylim(800, 1300)
         self.ani = animation.FuncAnimation(self.fig, self.update_plot,
                                                 init_func=self.init_plot,
-                                                frames=self.dothing,
-                                                interval=100, blit=False)
-
+                                                frames=self.loop,
+                                                interval=16, blit=True)
 
     def init_plot(self):
-        return self.actual_line, self.ax
+        return self.actual_line,
 
-    def dothing(self):
-        # import pdb
-        # pdb.set_trace()
-        for (i, (date, value)) in enumerate(self.reader.actual_value_gen()):
+    def update_plot(self, i):
+        self.actual_line.set_ydata(self.inspector.df[self.args.system])
+        return self.actual_line,
+
+    def run(self):
+        plt.show()
+
+
+    def loop(self):
+        for (date, value) in self.reader.actual_value_gen():
 
             self.inspector.receive_actual_value((date, value), self.reader.current_system)
 
@@ -78,15 +83,12 @@ class Mosyco():
                 if exceeds_threshold:
                     self.deviation_count += 1
 
-            yield i
+                if date.year == 1997:
+                    plt.close()
 
 
-    def update_plot(self, i):
-        self.actual_line.set_ydata(self.inspector.df[self.args.system])
-        return self.actual_line,
+            yield (date, value)
 
-    def run(self):
-        plt.show()
 
 # ==============================================================================
 

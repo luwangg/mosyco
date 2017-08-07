@@ -27,9 +27,7 @@ class AnimatedPlot():
         self.system = system
 
         # Setup the figure and axes...
-        self.fig, self.ax = plt.subplots()
-        self.inspector.df[self.system] = np.nan
-        self.actual_line, = self.ax.plot(self.inspector.df[self.system])
+        self.init_plot()
         # Then setup FuncAnimation.
         self.ani = animation.FuncAnimation(self.fig, self.update,
                                             # init_func=self.init_plot,
@@ -38,8 +36,12 @@ class AnimatedPlot():
 
 
     def init_plot(self):
-        self.actual_line = self.ax.plot([0, 0])
-        return self.actual_line,
+        self.fig, self.ax = plt.subplots()
+        self.inspector.df[self.system] = np.nan
+        self.actual_line, = self.ax.plot(self.inspector.index,
+                                 [0 for i in range(self.inspector.df.size)])
+
+        return self.actual_line, self.ax
 
     def update(self, new_value):
         """Update the plot."""

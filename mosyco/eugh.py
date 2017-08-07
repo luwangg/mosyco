@@ -31,17 +31,14 @@ def run():
         # random sample to simulate data new "arriving"
         df.loc[idx, 'y'] = np.random.randint(0, 100)
 
-        # log some error here
-        # error = abs(df.loc[idx, 'y'] - df.loc[idx, 'z'])
-        # print(error)
 
         if i % 10 == 0:
             # some blocking computation on the dataframe happens here
             # this may actually take up to 4 seconds
-            time.sleep(0.1)
+            time.sleep(1)
         yield i
 
 # run the animation
 ani = animation.FuncAnimation(fig, update_plot, frames=run,
-                              interval=100, blit=True, repeat=False)
+                              interval=100, blit=False, repeat=False)
 plt.show()
