@@ -6,6 +6,7 @@ import matplotlib.animation as animation
 
 import time
 import pandas as pd
+import numpy as np
 import logging
 
 import asyncio
@@ -20,22 +21,28 @@ log = logging.getLogger(__name__)
 class AnimatedPlot():
     """An animated plot of mosyco."""
     def __init__(self, inspector, system, actual_value_gen):
-        plt.ion()
+        # plt.ion()
         # self.stream = self.data_stream()
         self.inspector = inspector
         self.system = system
 
         # Setup the figure and axes...
         self.fig, self.ax = plt.subplots()
+        self.inspector.df[self.system] = np.nan
+        self.actual_line, = self.ax.plot(self.inspector.df[self.system])
         # Then setup FuncAnimation.
         self.ani = animation.FuncAnimation(self.fig, self.update,
+                                            # init_func=self.init_plot,
                                             frames=actual_value_gen,
                                             interval=5, blit=True)
 
 
+    def init_plot(self):
+        self.actual_line = self.ax.plot([0, 0])
+        return self.actual_line,
+
     def update(self, new_value):
         """Update the plot."""
-
         (date, value) = new_value
         # send value to inspector
         inspector.receive_actual_value((date, value), reader.current_system)
@@ -72,14 +79,16 @@ class AnimatedPlot():
 
         # need to make sure that new data has come in:
         # TODO: how better? asyncio
-        time.sleep(0.1)
+
         # TODO: try catch block for KeyError during first call
         try:
-            actual_data = self.inspector.df[self.system]
-            self.actual_line = self.ax.plot(actual_data)[0]
+            data = self.inspector.df[self.system]
+            self.actual_line.set_data(data.index, data.values)
+            # self.actual_line = self.ax.plot(actual_data)[0]
         except KeyError as e:
             log.info(f'No {self.system} data available for plotting yet')
             # dummy line
+            # self.actual_line =
             self.actual_line = self.ax.plot([0, 0])
 
         return self.actual_line,

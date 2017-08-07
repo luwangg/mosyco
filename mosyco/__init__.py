@@ -1,4 +1,4 @@
 import matplotlib
 matplotlib.use('TKAgg')
-# import matplotlib.pylab as plt
+# import matplotlib.pyplot as plt
 # plt.ion()
