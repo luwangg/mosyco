@@ -5,6 +5,7 @@ import matplotlib.animation as animation
 import numpy as np
 import pandas as pd
 import time
+import threading
 
 plt.style.use('seaborn')
 
@@ -28,25 +29,28 @@ fig.autofmt_xdate()
 def update_plot(i):
     line.set_ydata(df['y'])
     ax.autoscale_view(scaley=False)
-
     return line,
 
 
 def run():
+    # give plot time to get ready
+    time.sleep(0.5)
     # this loop should be animated
     for (i, (idx, _)) in enumerate(df.iterrows()):
-
         # random sample to simulate data new "arriving"
         df.loc[idx, 'y'] = np.random.randint(0, 100)
 
+        # print(abs(df.loc[idx, 'y'] - df.loc[idx, 'z']))
 
         if i % 10 == 0:
             # some blocking computation on the dataframe happens here
             # this may actually take up to 4 seconds
             time.sleep(1)
-        yield i
+        time.sleep(0.1)
 
-# run the animation
-ani = animation.FuncAnimation(fig, update_plot, frames=run,
+ani = animation.FuncAnimation(fig, update_plot, frames=None,
                               interval=100, blit=True, repeat=False)
+t1 = threading.Thread(target=run)
+t1.start()
 plt.show()
+# run()
