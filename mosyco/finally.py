@@ -8,6 +8,7 @@ import matplotlib.animation as animation
 import pandas as pd
 import numpy as np
 import logging
+from threading import Thread
 
 from mosyco.inspector import Inspector
 from mosyco.reader import Reader
@@ -64,28 +65,26 @@ class Mosyco():
                 next_year = date.year + 1
 
                 log.info(f'current date: {date.date()}')
+
                 # model data ends July 2015 so we don't need a forecast for that year
                 if not next_year == 2015:
+
+                    period = pd.Period(next_year)
+                    log.info(f'Generating forecast for {period}...')
+
                     # generate the new forecast
-                    log.info(f'Generating forecast for {next_year}...')
-                    self.inspector.forecast_year(pd.Period(next_year),
-                                                 self.args.system)
-                    # forecast number is now in inspector.forecast dataframe
+                    t = Thread(target=self.inspector.predict, args=(period, self.args.system))
+                    t.start()
+                    # self.inspector.predict(period, self.args.system)
+                    # this returns a dataframe of the period with NaN values
+                    # where the model data falls outside the forecast
+                    # confidence interval. TODO: could be used for plotting
 
-                    # errors is a dataframe of the year with NaN values where the
-                    # model data falls outside the forecast confidence interval
-                    # TODO: could be used for plotting
-                    # errors = inspector.eval_future(next_year)
-                    self.inspector.eval_future(next_year)
 
-                (exceeds_threshold, deviation) = self.inspector.eval_actual(date, self.args.system)
+                (exceeds_threshold, _) = self.inspector.eval_actual(date, self.args.system)
 
                 if exceeds_threshold:
                     self.deviation_count += 1
-
-                if date.year == 1997:
-                    plt.close()
-
 
             yield (date, value)
 

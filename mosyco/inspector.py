@@ -92,6 +92,10 @@ class Inspector:
 
         return result
 
+    def predict(self, period, system):
+        self.forecast_period(period, system)
+        return self.eval_future(period)
+
     def eval_future(self, period):
         """Evaluate the deviation between Model and Forecast data for a period.
 
@@ -123,10 +127,13 @@ class Inspector:
         # ======================================================================
 
         # variable data has model and relevant forecasting data for period
-        # this will raise an exception if  we haven't forecast the required period yet
+        # this will raise an exception if we haven't forecast the required period yet
         try:
             data = pd.concat(
-                [self.df.loc[str(period)], self.forecast.loc[str(period)]],
+                [
+                self.df.loc[period.start_time:period.end_time],
+                self.forecast.loc[period.start_time:period.end_time]
+                ],
                 axis=1)
         except KeyError as e:
             raise KeyError(f"Forecasting data for {period} not available.")
@@ -199,7 +206,7 @@ class Inspector:
 
 
 
-    def forecast_year(self, period, actual_system):
+    def forecast_period(self, period, actual_system):
         """Update forecast dataframe attribute with forecast for the given period.
 
         A period can be any pandas period object or period-like string.
@@ -235,11 +242,11 @@ class Inspector:
         # TODO: entries for period MUST be empty, else this will raise an exception?!
         # double check / assert here that period is in df
         assert 'ds' in self.df.columns
-        fc_frame = self.df.loc[str(period)].filter(['ds'])
+        fc_frame = self.df.loc[period.start_time:period.end_time].filter(['ds'])
 
         # EXPENSIVE - CAN TAKE VERY LONG
-        with helpers.silence():
-            new_forecast = self.forecasting_model.predict(fc_frame)
+
+        new_forecast = self.forecasting_model.predict(fc_frame)
         del fc_frame
 
         # new_forecast needs to have DateTimeIndex

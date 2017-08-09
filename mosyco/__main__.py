@@ -31,16 +31,16 @@ class Mosyco():
                 # model data ends July 2015 so we don't need a forecast for that year
                 if not next_year == 2015:
                     # generate the new forecast
-                    log.info(f'Generating forecast for {next_year}...')
-                    self.inspector.forecast_year(pd.Period(next_year),
-                                                 self.args.system)
+                    period = pd.Period(next_year)
+                    log.info(f'Generating forecast for {period}...')
+                    self.inspector.predict(period, self.args.system)
                     # forecast number is now in inspector.forecast dataframe
 
                     # errors is a dataframe of the year with NaN values where the
                     # model data falls outside the forecast confidence interval
                     # TODO: could be used for plotting
                     # errors = inspector.eval_future(next_year)
-                    self.inspector.eval_future(next_year)
+                    self.inspector.eval_future(period)
 
                 (exceeds_threshold, deviation) = self.inspector.eval_actual(date, self.args.system)
 

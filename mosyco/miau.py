@@ -66,7 +66,7 @@ class AnimatedPlot():
             if not next_year == 2015:
                 # generate the new forecast
                 log.info(f'Generating forecast for {next_year}...')
-                inspector.forecast_year(pd.Period(next_year), args.system)
+                inspector.forecast_period(pd.Period(next_year), args.system)
                 # forecast number is now in inspector.forecast dataframe
 
                 # errors is a dataframe of the year with NaN values where the

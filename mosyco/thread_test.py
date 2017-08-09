@@ -46,7 +46,7 @@ def run():
             # some blocking computation on the dataframe happens here
             # this may actually take up to 4 seconds
             time.sleep(1)
-        time.sleep(0.1)
+        # time.sleep(0.1)
 
 ani = animation.FuncAnimation(fig, update_plot, frames=None,
                               interval=100, blit=True, repeat=False)
