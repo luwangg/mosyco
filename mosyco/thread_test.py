@@ -19,17 +19,20 @@ df['y'] = np.nan
 df['z'] = 50
 
 # setup the plot
-fig, ax = plt.subplots()
+fig, (ax, ax2) = plt.subplots(2)
 
 # by the way: how do I initialize the line properly?
 line, = ax.plot(df.index, [0 for i in range(len(df))])
+l2, = ax2.plot(df['z'])
 ax.set_ylim(0, 100)
+ax2.set_ylim(30, 60)
 fig.autofmt_xdate()
 
 def update_plot(i):
     line.set_ydata(df['y'])
+    l2.set_ydata(df['z'])
     ax.autoscale_view(scaley=False)
-    return line,
+    return line, l2
 
 
 def run():
@@ -39,14 +42,14 @@ def run():
     for (i, (idx, _)) in enumerate(df.iterrows()):
         # random sample to simulate data new "arriving"
         df.loc[idx, 'y'] = np.random.randint(0, 100)
-
+        df['z'] = np.random.randint(40, 60)
         # print(abs(df.loc[idx, 'y'] - df.loc[idx, 'z']))
 
         if i % 10 == 0:
             # some blocking computation on the dataframe happens here
             # this may actually take up to 4 seconds
-            time.sleep(1)
-        # time.sleep(0.1)
+            time.sleep(0.5)
+        time.sleep(0.1)
 
 ani = animation.FuncAnimation(fig, update_plot, frames=None,
                               interval=100, blit=True, repeat=False)
