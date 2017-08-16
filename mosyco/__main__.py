@@ -2,6 +2,7 @@
 import pandas as pd
 import logging
 from threading import Thread
+import sys
 
 from mosyco.plotter import Plotter
 from mosyco.inspector import Inspector
@@ -12,9 +13,24 @@ log = logging.getLogger(__name__)
 
 # ==============================================================================
 class Mosyco():
-    """Represents an instance of the Model-System-Controller Prototype."""
+    """Represents an instance of the Model-System-Controller Prototype.
+
+    The Mosyco architecture combines Reader and Inspector to simulate the live
+    observation of a running system.
+
+    Attributes:
+        args: command line arguments
+        reader: mosyco.Reader instance
+        inspector: mosyco.Inspector instance
+        plotter: mosyco.Plotter instance
+    """
+
     def __init__(self, args):
-        """Create a new Mosyco app."""
+        """Create a new Mosyco instance.
+
+        Args:
+            args: The command line arguments from mosyco.parser
+        """
         self.args = args
         self.reader = Reader(args.system)
         self.inspector = Inspector(self.reader.df.index, self.reader.df[args.model])
@@ -22,9 +38,11 @@ class Mosyco():
         self.deviation_count = 0
 
     def run(self):
+        """Start and run the Mosyco system."""
         self.plotter.show_plot()
 
     def loop(self):
+        """Generator used as the Mosyco main loop."""
         for (date, value) in self.reader.actual_value_gen():
 
             # simulate new system data arriving
@@ -54,7 +72,6 @@ class Mosyco():
             # pass data through to plotting engine
             yield (date, value)
 
-
 # ==============================================================================
 
 # read command line arguments & set log level
@@ -69,4 +86,3 @@ app = Mosyco(args)
 app.run()
 
 log.debug(f'Total: {app.deviation_count} model-actual deviations detected.')
-log.info('The program has terminated, please close the plot to exit cleanly.')
