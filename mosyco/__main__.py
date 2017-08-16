@@ -1,61 +1,86 @@
 # -*- coding: utf-8 -*-
-
 import pandas as pd
 import logging
+from threading import Thread
 
+from mosyco.plotter import Plotter
 from mosyco.inspector import Inspector
 from mosyco.reader import Reader
 import mosyco.parser
 
 log = logging.getLogger(__name__)
 
+# ==============================================================================
+class Mosyco():
+    """Represents an instance of the Model-System-Controller Prototype.
+
+    The Mosyco architecture combines Reader and Inspector to simulate the live
+    observation of a running system.
+
+    Attributes:
+        args: command line arguments
+        reader: mosyco.Reader instance
+        inspector: mosyco.Inspector instance
+        plotter: mosyco.Plotter instance
+    """
+
+    def __init__(self, args):
+        """Create a new Mosyco instance.
+
+        Args:
+            args: The command line arguments from mosyco.parser
+        """
+        self.args = args
+        self.reader = Reader(args.system)
+        self.inspector = Inspector(self.reader.df.index, self.reader.df[args.model])
+        self.plotter = Plotter(self)
+        self.deviation_count = 0
+
+    def run(self):
+        """Start and run the Mosyco system."""
+        self.plotter.show_plot()
+
+    def loop(self):
+        """Generator used as the Mosyco main loop."""
+        for (date, value) in self.reader.actual_value_gen():
+
+            # simulate new system data arriving
+            self.inspector.receive_actual_value((date, value), self.reader.current_system)
+
+            # evaluate difference between actual and model data
+            (exceeds_threshold, _) = self.inspector.eval_actual(date, self.args.system)
+            if exceeds_threshold:
+                self.deviation_count += 1
+
+            next_year = date.year + 1
+
+            # at the end of each period, create a forecast for the following
+            # TODO: allow flexible period as argument
+            if date.month == 12 and date.day == 31:
+
+                log.debug(f'current date: {date.date()}')
+
+                period = pd.Period(next_year)
+                log.info(f'Generating forecast for {period}...')
+
+                # generate the new forecast in separate thread
+                self.current_fc_thread = Thread(target=self.inspector.predict, args=(period, self.args.system))
+                self.current_fc_thread.start()
+
+            # pass data through to plotting engine
+            yield (date, value)
+
+# ==============================================================================
+
 # read command line arguments & set log level
 args = mosyco.parser.parse_arguments()
 log.setLevel(args.loglevel)
 
-# ==============================================================================
 log.info('Starting mosyco...')
 log.debug('running in DEBUG Mode')
-# initialize reader and inspector
-reader = Reader(args.system)
-inspector = Inspector(reader.df.index, reader.df[args.model])
 
-# the actual value generator simulates incoming data from a monitored system.
-# the reader reads this data and sends it to the inspector
+# Run Mosyco
+app = Mosyco(args)
+app.run()
 
-deviation_count = 0
-
-# ==============================================================================
-# main loop starts here:
-for (date, value) in reader.actual_value_gen():
-    # send value to inspector
-    inspector.receive_actual_value((date, value), reader.current_system)
-
-    # create a forecast every year and eval model based on it
-    if date.month == 12 and date.day == 31:
-        next_year = date.year + 1
-
-        log.info(f'current date: {date.date()}')
-
-        # model data ends July 2015 so we don't need a forecast for that year
-        if not next_year == 2015:
-            # generate the new forecast
-            period = pd.Period(next_year)
-            log.info(f'Generating forecast for {period}...')
-            inspector.forecast_year(period, args.system)
-            # forecast number is now in inspector.forecast dataframe
-
-            # errors is a dataframe of the year with NaN values where the
-            # model data falls outside the forecast confidence interval
-            # TODO: could be used for plotting
-            # errors = inspector.eval_future(next_year)
-            inspector.eval_future(period)
-
-
-    (exceeds_threshold, deviation) = inspector.eval_actual(date, args.system)
-    if exceeds_threshold:
-        deviation_count += 1
-
-log.info(f'Total: {deviation_count} model-actual deviations detected.')
-log.info('...finished!')
-# ==============================================================================
+log.debug(f'Total: {app.deviation_count} model-actual deviations detected.')

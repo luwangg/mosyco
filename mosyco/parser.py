@@ -19,7 +19,7 @@ def valid_threshold(f):
 
 def parse_arguments():
     """Parse the command line arguments."""
-    parser = argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(prog="mosyco",
         description="Prototype for a Model-/System-Controller architecture.")
 
     # Log verbosity
@@ -44,7 +44,7 @@ def parse_arguments():
 
     # Animation
     parser.add_argument("--animate",
-            help="show animated matplotlib plots if available",
+            help="show animated plots if available",
             action="store_true")
 
     args = parser.parse_args()

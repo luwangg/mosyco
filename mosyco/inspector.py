@@ -50,6 +50,7 @@ class Inspector:
 
         # add a forecast dataframe with same index as main dataframe
         self.forecast = pd.DataFrame(index=index)
+        self.new_fc_available = False
 
         # TODO: figure out where to get THRESHOLD from
         self.threshold = 0.2
@@ -91,6 +92,12 @@ class Inspector:
             log.debug(f'Model-actual deviation on {date} by {deviation}')
 
         return result
+
+    def predict(self, period, system):
+        self.forecast_period(period, system)
+        res = self.eval_future(period)
+        self.new_fc_available = True
+        return res
 
     def eval_future(self, period):
         """Evaluate the deviation between Model and Forecast data for a period.
@@ -202,7 +209,7 @@ class Inspector:
 
 
 
-    def forecast_year(self, period, actual_system):
+    def forecast_period(self, period, actual_system):
         """Update forecast dataframe attribute with forecast for the given period.
 
         A period can be any pandas period object or period-like string.
