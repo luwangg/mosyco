@@ -27,39 +27,31 @@ class Mosyco():
     def loop(self):
         for (date, value) in self.reader.actual_value_gen():
 
+            # simulate new system data arriving
             self.inspector.receive_actual_value((date, value), self.reader.current_system)
 
-            # create a forecast every year and evaluate the model based on it
+            # evaluate difference between actual and model data
+            (exceeds_threshold, _) = self.inspector.eval_actual(date, self.args.system)
+            if exceeds_threshold:
+                self.deviation_count += 1
+
+
+            next_year = date.year + 1
+
+            # at the end of each period, create a forecast for the following
+            # TODO: allow flexible period as argument
             if date.month == 12 and date.day == 31:
-                next_year = date.year + 1
 
-                log.info(f'current date: {date.date()}')
+                log.debug(f'current date: {date.date()}')
 
-                # model data ends July 2015 so we don't need a forecast for that year
-                if not next_year == 2015:
+                period = pd.Period(next_year)
+                log.info(f'Generating forecast for {period}...')
 
-                    period = pd.Period(next_year)
-                    log.info(f'Generating forecast for {period}...')
+                # generate the new forecast in separate thread
+                self.current_fc_thread = Thread(target=self.inspector.predict, args=(period, self.args.system))
+                self.current_fc_thread.start()
 
-                    # generate the new forecast
-                    self.current_fc_thread = Thread(target=self.inspector.predict, args=(period, self.args.system))
-                    self.current_fc_thread.start()
-                    # self.inspector.predict(period, self.args.system)
-                    # this returns a dataframe of the period with NaN values
-                    # where the model data falls outside the forecast
-                    # confidence interval. TODO: could be used for plotting
-
-                # TODO: take out early exit
-                if next_year == 1998:
-                    # TODO: how to exit program cleanly
-                    log.info('The program has terminated, \
-                             please close the plot to exit cleanly.')
-                    break
-
-                (exceeds_threshold, _) = self.inspector.eval_actual(date, self.args.system)
-                if exceeds_threshold:
-                    self.deviation_count += 1
-
+            # pass data through to plotting engine
             yield (date, value)
 
 
@@ -76,5 +68,5 @@ log.debug('running in DEBUG Mode')
 app = Mosyco(args)
 app.run()
 
-log.info(f'Total: {app.deviation_count} model-actual deviations detected.')
-log.info('...finished!')
+log.debug(f'Total: {app.deviation_count} model-actual deviations detected.')
+log.info('The program has terminated, please close the plot to exit cleanly.')
