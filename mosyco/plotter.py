@@ -259,4 +259,4 @@ class Plotter:
                             self.ci), (self.dev_warn_above,
                             self.dev_warn_below)], ['Live System',
                             'System Model', 'Forecast \u00B1 CI',
-                            'ModelForecast Deviation'])
+                            'Model-Forecast Deviation'])
