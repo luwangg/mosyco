@@ -43,7 +43,7 @@ def parse_arguments():
             type=valid_threshold)
 
     # Animation
-    parser.add_argument("--animate",
+    parser.add_argument("--gui",
             help="show animated plots if available",
             action="store_true")
 

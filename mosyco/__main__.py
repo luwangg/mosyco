@@ -33,12 +33,17 @@ class Mosyco():
         self.args = args
         self.reader = Reader(args.system)
         self.inspector = Inspector(self.reader.df.index, self.reader.df[args.model])
-        self.plotter = Plotter(self)
+        if self.args.gui:
+            self.plotter = Plotter(self)
         self.deviation_count = 0
 
     def run(self):
         """Start and run the Mosyco system."""
-        self.plotter.show_plot()
+        if self.args.gui:
+            self.plotter.show_plot()
+        else:
+            for res in self.loop():
+                pass
 
     def loop(self):
         """Generator used as the Mosyco main loop."""
@@ -64,11 +69,13 @@ class Mosyco():
                 log.info(f'Generating forecast for {period}...')
 
                 # generate the new forecast in separate thread
-                self.current_fc_thread = Thread(target=self.inspector.predict, args=(period, self.args.system))
+                self.current_fc_thread = Thread(target=self.inspector.predict, args=(period, self.args.system), daemon=True)
                 self.current_fc_thread.start()
 
             # pass data through to plotting engine
             yield (date, value)
+
+
 
 # ==============================================================================
 
