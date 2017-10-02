@@ -4,10 +4,10 @@ import argparse
 import logging
 
 # DEFAULT COLUMN NAMES
-model_name = 'PAmodel'
-actual_name = 'PAseasonal'
+model_list = ['PAmodel']
+system_list = ['PAseasonal', 'PAtrend']
 # DEFAULT THRESHOLD
-default_threshold = 0.3
+default_threshold = 0.2
 
 
 def valid_threshold(f):
@@ -29,16 +29,16 @@ def parse_arguments():
     group.add_argument("-q", "--quiet", help="silence output", action="store_true")
 
     # Data columns
-    parser.add_argument("-m", "--model", help="name of the model data column",
-            default=model_name)
+    parser.add_argument("-m", "--models", help="list of the model data columns",
+            default=model_list)
 
-    parser.add_argument("-s", "--system",
-            help="name of the actual system data column",
-            default=actual_name)
+    parser.add_argument("-s", "--systems",
+            help="list of the actual system data columns",
+            default=system_list)
 
     # Threshold value
     parser.add_argument("-t", "--threshold",
-            help="threshold used for gap analysis",
+            help="initial threshold used for gap analysis",
             default=default_threshold,
             type=valid_threshold)
 

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import pandas as pd
 import logging
+import queue
 from threading import Thread
 
 from mosyco.plotter import Plotter
@@ -8,7 +9,7 @@ from mosyco.inspector import Inspector
 from mosyco.reader import Reader
 import mosyco.parser
 
-log = logging.getLogger(__name__)
+log = logging.getLogger(__package__)
 
 # ==============================================================================
 class Mosyco():
@@ -31,8 +32,11 @@ class Mosyco():
             args: The command line arguments from mosyco.parser
         """
         self.args = args
-        self.reader = Reader(args.system)
-        self.inspector = Inspector(self.reader.df.index, self.reader.df[args.model])
+        self.queue = queue.Queue()
+        self.reader = Reader(args.systems, self.queue)
+        self.inspector = Inspector(self.reader.df.index,
+                                    self.reader.df[args.models], args,
+                                    self.queue)
         if self.args.gui:
             self.plotter = Plotter(self)
         self.deviation_count = 0
@@ -42,20 +46,22 @@ class Mosyco():
         if self.args.gui:
             self.plotter.show_plot()
         else:
+            self.reader.start()
             for res in self.loop():
+                log.debug(f'Ran through iteration. res: {res}')
                 pass
 
     def loop(self):
-        """Generator used as the Mosyco main loop."""
-        for (date, value) in self.reader.actual_value_gen():
+        for t in self.inspector.receive_actual_value():
+            assert len(self.args.systems) == len(t[1:])
+            values = t._asdict()
+            date = values.pop('Index')
 
-            # simulate new system data arriving
-            self.inspector.receive_actual_value((date, value), self.reader.current_system)
-
-            # evaluate difference between actual and model data
-            (exceeds_threshold, _) = self.inspector.eval_actual(date, self.args.system)
-            if exceeds_threshold:
-                self.deviation_count += 1
+            for system_name, val in values.items():
+                (exceeds_threshold, _) = self.inspector.eval_actual(date, system_name)
+                # TODO: how to output threshold deviations
+                log.debug(f'Date: {date.date()} ' + \
+                    f'- Model-Actual deviation for system: {system_name}')
 
             next_year = date.year + 1
 
@@ -63,18 +69,19 @@ class Mosyco():
             # TODO: allow flexible period as argument
             if date.month == 12 and date.day == 31:
 
-                log.debug(f'current date: {date.date()}')
+                log.debug(f'Current date: {date.date()}')
 
                 period = pd.Period(next_year)
                 log.info(f'Generating forecast for {period}...')
 
                 # generate the new forecast in separate thread
-                self.current_fc_thread = Thread(target=self.inspector.predict, args=(period, self.args.system), daemon=True)
+                self.current_fc_thread = Thread(target=self.inspector.predict,
+                                                args=(period, self.args.systems),
+                                                daemon=True)
                 self.current_fc_thread.start()
 
             # pass data through to plotting engine
-            yield (date, value)
-
+            yield (date, values)
 
 
 # ==============================================================================

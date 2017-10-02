@@ -9,6 +9,7 @@ import mosyco.methods as methods
 import mosyco.helpers as helpers
 
 log = logging.getLogger(__name__)
+log.info(__name__)
 
 
 class Inspector:
@@ -28,11 +29,11 @@ class Inspector:
 
     Attributes:
         df (DataFrame): holds model data and is filled with actual values.
-        model_name (str): name of the model.
+        models (str): list of models.
         forecast (DataFrame): is filled with forecasts in regular intervals.
         threshold (float): percentage threshold for actual-model deviations.
     """
-    def __init__(self, index, model_column):
+    def __init__(self, index, model_columns, args, queue):
         """Create a new Inspector.
 
         The index should be the reader's index. This means that the reader and
@@ -40,10 +41,18 @@ class Inspector:
 
         Args:
             index (Index or DateTimeIndex): of the corresponding reader's dataframe.
-            model_column (Series): model data column, passed from reader in batch.
+            model_columns (Series): list of model data columns, passed from reader in batch.
         """
-        self.model_name = model_column.name
-        self.df = pd.DataFrame(data=model_column.copy(), index=index)
+        # TODO: make this a list as well and use all models !!!
+        self.model_name = model_columns.columns[0]
+        self.args = args
+
+        # self.df = pd.DataFrame(data=model_columns.copy(), index=index)
+        self.df = pd.DataFrame(data=model_columns.copy(), index=index)
+        for s in self.args.systems:
+            self.df[s] = np.nan
+
+        self.queue = queue
 
         # add 'ds' (Date) column for fbprohet
         self.df['ds'] = self.df.index
@@ -52,18 +61,26 @@ class Inspector:
         self.forecast = pd.DataFrame(index=index)
         self.new_fc_available = False
 
-        # TODO: figure out where to get THRESHOLD from
-        self.threshold = 0.2
+        self.threshold = self.args.threshold
         # \u00B1 is unicode for hte plus-minus character
         log.info(f"Using threshold: \u00B1{self.threshold:.2%}")
 
-    def receive_actual_value(self, val, system):
-        """Fills inspector dataframe with actual values from a running system.
+    def receive_actual_value(self):
+        """Fills inspector dataframe with actual values from running systems.
         Args:
             val (tuple): of (index, value) where index is a DateTime object
             system (str): name of the active system (e.g. 'PAcombi')
         """
-        self.df.set_value(val[0], system, val[1])
+        new_row = self.queue.get()
+        log.debug(f'New row: {new_row}. type: {type(new_row)}')
+        log.debug(self.args.systems)
+
+        # prevent weird pandas error "setting an array element with a sequence"
+        if len(new_row) == 2:
+            self.df.loc[new_row.Index, self.args.systems] = new_row[1:][0]
+        else:
+            self.df.loc[new_row.Index, self.args.systems] = new_row[1:]
+        yield new_row
 
     def eval_actual(self, date, system):
         """Evaluate the deviation between model- and actual data for given date.
