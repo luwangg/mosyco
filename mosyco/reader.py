@@ -37,8 +37,10 @@ class Reader(threading.Thread):
         log.info("Initialized reader...")
 
     def run(self):
+        log.debug("Reader.run() called. Starting to send data to queue now...")
         frame = self.df.loc[:, self.systems]
         for entry in frame.itertuples():
             self.queue.put(entry)
-            # TODO: necessary?
-            time.sleep(0)
+            time.sleep(0.0001)
+        # signal that reader is done
+        self.queue.put(None)

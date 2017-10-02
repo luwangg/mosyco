@@ -2,6 +2,7 @@
 import pandas as pd
 import logging
 import queue
+import time
 from threading import Thread
 
 from mosyco.plotter import Plotter
@@ -39,6 +40,7 @@ class Mosyco():
                                     self.queue)
         if self.args.gui:
             self.plotter = Plotter(self)
+        self.fc_threads = []
         self.deviation_count = 0
 
     def run(self):
@@ -49,10 +51,10 @@ class Mosyco():
             self.reader.start()
             for res in self.loop():
                 log.debug(f'Ran through iteration. res: {res}')
-                pass
+
 
     def loop(self):
-        for t in self.inspector.receive_actual_value():
+        for t in self.inspector.receive():
             assert len(self.args.systems) == len(t[1:])
             values = t._asdict()
             date = values.pop('Index')
@@ -72,13 +74,19 @@ class Mosyco():
                 log.debug(f'Current date: {date.date()}')
 
                 period = pd.Period(next_year)
-                log.info(f'Generating forecast for {period}...')
 
-                # generate the new forecast in separate thread
-                self.current_fc_thread = Thread(target=self.inspector.predict,
-                                                args=(period, self.args.systems),
-                                                daemon=True)
-                self.current_fc_thread.start()
+                # generate forecasts for each system
+                if date.year == 2015:
+                    break
+                for sys in self.args.systems:
+                    log.info(f'Generating {sys} forecast for {period}...')
+
+                    # generate the new forecasts separate threads
+                    t = Thread(target=self.inspector.predict,
+                                name='-'.join(['Thread', sys, str(period)]),
+                                args=(period, sys),
+                                daemon=True)
+                    t.start()
 
             # pass data through to plotting engine
             yield (date, values)

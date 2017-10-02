@@ -65,22 +65,28 @@ class Inspector:
         # \u00B1 is unicode for hte plus-minus character
         log.info(f"Using threshold: \u00B1{self.threshold:.2%}")
 
-    def receive_actual_value(self):
+    def receive(self):
         """Fills inspector dataframe with actual values from running systems.
-        Args:
-            val (tuple): of (index, value) where index is a DateTime object
-            system (str): name of the active system (e.g. 'PAcombi')
-        """
-        new_row = self.queue.get()
-        log.debug(f'New row: {new_row}. type: {type(new_row)}')
-        log.debug(self.args.systems)
 
-        # prevent weird pandas error "setting an array element with a sequence"
-        if len(new_row) == 2:
-            self.df.loc[new_row.Index, self.args.systems] = new_row[1:][0]
-        else:
-            self.df.loc[new_row.Index, self.args.systems] = new_row[1:]
-        yield new_row
+        This is a generator function that will retrieve actual system values from
+        the mosyco queue until it retrieves a None value. The retrieved data is
+        yielded for further analysis and plotting.
+        """
+        while True:
+            new_row = self.queue.get()
+            if new_row is None:
+                log.debug('The queue is empty. The Inspector has finished.')
+                return
+
+            log.debug('GETTING +++++++++++++++++++')
+
+            # prevent weird pandas error "setting an array element with a sequence"
+            if len(new_row) == 2:
+                self.df.loc[new_row.Index, self.args.systems] = new_row[1:][0]
+            else:
+                self.df.loc[new_row.Index, self.args.systems] = new_row[1:]
+
+            yield new_row
 
     def eval_actual(self, date, system):
         """Evaluate the deviation between model- and actual data for given date.
