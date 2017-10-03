@@ -6,11 +6,8 @@ import logging
 from fbprophet import Prophet
 
 import mosyco.methods as methods
-import mosyco.helpers as helpers
 
 log = logging.getLogger(__name__)
-log.info(__name__)
-
 
 class Inspector:
     """The Inspector analyses the data pushed by the reader.
@@ -77,8 +74,6 @@ class Inspector:
             if new_row is None:
                 log.debug('The queue is empty. The Inspector has finished.')
                 return
-
-            log.debug('GETTING +++++++++++++++++++')
 
             # prevent weird pandas error "setting an array element with a sequence"
             if len(new_row) == 2:
@@ -227,8 +222,7 @@ class Inspector:
 
         # No custom settings for model, b/c we are predicting what we already
         # know anyways
-        with helpers.silence():
-            self.forecasting_model = Prophet().fit(self.df)
+        self.forecasting_model = Prophet().fit(self.df)
 
 
 

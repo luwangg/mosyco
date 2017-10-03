@@ -9,7 +9,9 @@ from mosyco.plotter import Plotter
 from mosyco.inspector import Inspector
 from mosyco.reader import Reader
 import mosyco.parser
+import mosyco.helpers as helpers
 
+logging.getLogger('fbprophet').setLevel(logging.WARNING)
 log = logging.getLogger(__package__)
 
 # ==============================================================================
@@ -21,9 +23,10 @@ class Mosyco():
 
     Attributes:
         args: command line arguments
+        queue: Queue for communication between reader and inspector
         reader: mosyco.Reader instance
         inspector: mosyco.Inspector instance
-        plotter: mosyco.Plotter instance
+        plotter: mosyco.Plotter instance if GUI-mode is enabled
     """
 
     def __init__(self, args):
@@ -54,42 +57,44 @@ class Mosyco():
 
 
     def loop(self):
-        for t in self.inspector.receive():
-            assert len(self.args.systems) == len(t[1:])
-            values = t._asdict()
-            date = values.pop('Index')
+        # silence suppresses stdout (to deal with pystan bug)
+        with helpers.silence():
+            for t in self.inspector.receive():
+                assert len(self.args.systems) == len(t[1:])
+                values = t._asdict()
+                date = values.pop('Index')
 
-            for system_name, val in values.items():
-                (exceeds_threshold, _) = self.inspector.eval_actual(date, system_name)
-                # TODO: how to output threshold deviations
-                log.debug(f'Date: {date.date()} ' + \
-                    f'- Model-Actual deviation for system: {system_name}')
+                for system_name, val in values.items():
+                    (exceeds_threshold, _) = self.inspector.eval_actual(date, system_name)
+                    # TODO: how to output threshold deviations
+                    log.debug(f'Date: {date.date()} ' + \
+                        f'- Model-Actual deviation for system: {system_name}')
 
-            next_year = date.year + 1
+                next_year = date.year + 1
 
-            # at the end of each period, create a forecast for the following
-            # TODO: allow flexible period as argument
-            if date.month == 12 and date.day == 31:
+                # at the end of each period, create a forecast for the following
+                # TODO: allow flexible period as argument
+                if date.month == 12 and date.day == 31:
 
-                log.debug(f'Current date: {date.date()}')
+                    log.debug(f'Current date: {date.date()}')
 
-                period = pd.Period(next_year)
+                    period = pd.Period(next_year)
 
-                # generate forecasts for each system
-                if date.year == 2015:
-                    break
-                for sys in self.args.systems:
-                    log.info(f'Generating {sys} forecast for {period}...')
+                    # generate forecasts for each system
+                    if date.year == 2015:
+                        break
+                    for sys in self.args.systems:
+                        log.info(f'Generating {sys} forecast for {period}...')
 
-                    # generate the new forecasts separate threads
-                    t = Thread(target=self.inspector.predict,
-                                name='-'.join(['Thread', sys, str(period)]),
-                                args=(period, sys),
-                                daemon=True)
-                    t.start()
+                        # generate the new forecasts separate threads
+                        t = Thread(target=self.inspector.predict,
+                                    name='-'.join(['Thread', sys, str(period)]),
+                                    args=(period, sys),
+                                    daemon=True)
+                        t.start()
 
-            # pass data through to plotting engine
-            yield (date, values)
+                # pass data through to plotting engine
+                yield (date, values)
 
 
 # ==============================================================================
