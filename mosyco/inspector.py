@@ -3,9 +3,12 @@ import numpy as np
 import pandas as pd
 import logging
 
+from threading import Thread
 from fbprophet import Prophet
 
 import mosyco.methods as methods
+import mosyco.helpers as helpers
+
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +33,7 @@ class Inspector:
         forecast (DataFrame): is filled with forecasts in regular intervals.
         threshold (float): percentage threshold for actual-model deviations.
     """
-    def __init__(self, index, model_columns, args, queue):
+    def __init__(self, index, model_columns, args, reader_queue, plotting_queue):
         """Create a new Inspector.
 
         The index should be the reader's index. This means that the reader and
@@ -49,7 +52,8 @@ class Inspector:
         for s in self.args.systems:
             self.df[s] = np.nan
 
-        self.queue = queue
+        self.reader_queue = reader_queue
+        self.plotting_queue = plotting_queue
 
         # add 'ds' (Date) column for fbprohet
         self.df['ds'] = self.df.index
@@ -62,6 +66,54 @@ class Inspector:
         # \u00B1 is unicode for hte plus-minus character
         log.info(f"Using threshold: \u00B1{self.threshold:.2%}")
 
+    def start(self):
+        # silence suppresses stdout (to deal with pystan bug)
+        with helpers.silence():
+            for row in self.receive():
+                assert len(self.args.systems) == len(row[1:])
+                values = row._asdict()
+                date = values.pop('Index')
+
+                for system_name, val in values.items():
+                    (exceeds_threshold, _) = self.eval_actual(date, system_name)
+                    # TODO: how to output threshold deviations
+                    log.debug(f'Date: {date.date()} ' + \
+                        f'- Model-Actual deviation for system: {system_name}')
+
+                next_year = date.year + 1
+
+                # at the end of each period, create a forecast for the following
+                # TODO: allow flexible period as argument
+                if date.month == 12 and date.day == 31:
+
+                    log.debug(f'Current date: {date.date()}')
+
+                    period = pd.Period(next_year)
+
+                    # generate forecasts for each system
+                    if date.year == 2015:
+                        break
+                    for system in self.args.systems:
+                        log.info(f'Generating {system} forecast for {period}...')
+
+                        # generate the new forecasts separate threads
+                        t = Thread(target=self.predict,
+                                    name='-'.join(['Thread', system, str(period)]),
+                                    args=(period, system),
+                                    daemon=True)
+                        t.start()
+
+                # pass data through to plotting engine
+                # yield (date, values)
+                if self.args.gui:
+                    try:
+                        self.plotting_queue.get()
+                    except:
+                        pass
+                    finally:
+                        self.plotting_queue.put(self)
+
+
     def receive(self):
         """Fills inspector dataframe with actual values from running systems.
 
@@ -70,7 +122,7 @@ class Inspector:
         yielded for further analysis and plotting.
         """
         while True:
-            new_row = self.queue.get()
+            new_row = self.reader_queue.get()
             if new_row is None:
                 log.debug('The queue is empty. The Inspector has finished.')
                 return

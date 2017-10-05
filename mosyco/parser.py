@@ -7,7 +7,7 @@ log = logging.getLogger(__name__)
 
 # DEFAULT COLUMN NAMES
 model_list = ['PAmodel']
-system_list = ['PAseasonal', 'PAtrend']
+system_list = ['PAseasonal']
 # DEFAULT THRESHOLD
 default_threshold = 0.2
 
@@ -77,10 +77,15 @@ def parse_arguments():
             "if for single model and system values.",
             action="store_true")
 
+    # Log to file
+    parser.add_argument("--logfile",
+            help="Log to a file called 'mosyco.log'",
+            action="store_true")
+
     args = parser.parse_args()
 
     if args.gui and (len(args.systems) > 1):
-        log.error(" GUI-mode is only available for a single system and model.")
+        print(" GUI-mode is only available for a single system and model.")
         sys.exit()
 
     if args.quiet:

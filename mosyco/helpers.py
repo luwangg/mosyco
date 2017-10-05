@@ -4,7 +4,7 @@
 import os
 import sys
 import contextlib
-
+import logging
 import pandas as pd
 
 
@@ -18,6 +18,28 @@ def load_dataframe():
     df = df.drop(['Unnamed: 0'], axis=1)
     return df
 
+def setup_logging(args):
+    """Setup logging for the application"""
+
+    log = logging.getLogger(__package__)
+    log.setLevel(args.loglevel)
+
+    # disable root logger handlers
+    root_logger = logging.getLogger()
+    root_logger.handlers = []
+
+    # set log output destination
+    if args.logfile:
+        handler = logging.FileHandler('mosyco.log', mode='w')
+    else:
+        handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter('{name}: {message}', style='{'))
+    root_logger.addHandler(handler)
+
+    # set prophet loglevel
+    logging.getLogger('fbprophet').setLevel(logging.WARNING)
+
+    return log
 
 @contextlib.contextmanager
 def silence():
