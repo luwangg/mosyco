@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
-import pandas as pd
-import logging
-import queue
-import time
-from threading import Thread
+from queue import Queue
+import multiprocessing as mp
 
 from mosyco.plotter import Plotter
 from mosyco.inspector import Inspector
@@ -35,8 +32,8 @@ class Mosyco():
             args: The command line arguments from mosyco.parser
         """
         self.args = args
-        self.reader_queue = queue.Queue()
-        self.plotting_queue = None
+        self.reader_queue = Queue()
+        self.plotting_queue = mp.Queue()
 
         self.reader = Reader(args.systems, self.reader_queue)
         self.inspector = Inspector(self.reader.df.index,
@@ -46,23 +43,18 @@ class Mosyco():
                                     self.plotting_queue)
 
         if self.args.gui:
-            self.plotting_queue = queue.Queue()
-            self.plotter = Plotter(self.inspector, self.plotting_queue)
+            self.plotter = Plotter(self.inspector, self.reader, self.plotting_queue)
 
         self.deviation_count = 0
 
     def run(self):
         """Start and run the Mosyco system."""
-        self.reader.start()
-
-         # TODO: integrate inspector into server...
-        self.inspector_thread = Thread(name='inspector_thread',
-                                        target=self.inspector.start)
 
         # Either start Inspector thread from GUI or manually
         if self.args.gui:
             self.plotter.run()
         else:
+            self.reader.start()
             self.inspector.start()
 
 

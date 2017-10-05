@@ -1,35 +1,42 @@
 # -*- coding: utf-8 -*-
 import logging
-import threading
 import numpy as np
 from dateutil.relativedelta import relativedelta
 
+from multiprocessing import Process
+from threading import Thread
+
 import dash
-from dash.dependencies import Input, Output, Event
+from dash.dependencies import Output, Event
 import dash_core_components as dcc
 import dash_html_components as html
 
-import plotly.plotly as py
 from plotly.graph_objs import Figure, Scatter
 
 log = logging.getLogger(__name__)
 
 
 class Plotter:
-    def __init__(self, inspector, queue):
-        self.inspector = inspector
+    def __init__(self, inspector, reader, queue):
+        self.reader_thread = reader
+        self.inspector_thread = Thread(name='inspector_thread',
+                                        target=inspector.start)
         self.plotting_queue = queue
         self.app = dash.Dash(name=__package__, csrf_protect=False)
         self.app.layout = html.Div([
             html.Button('Start', id='start-button'),
             dcc.Graph(id='time-series'),
-            dcc.Interval(id='graph-update', interval=1000),
+            dcc.Interval(id='graph-update', interval=3000),
         ])
         self.add_handlers()
 
 
     def run(self):
-        self.app.run_server(debug=True, use_reloader=False)
+        self.p = Process(name='Plotter', target=self.app.run_server,
+                            kwargs={'debug': True, 'use_reloader': False})
+        self.p.start()
+
+        # self.app.run_server(debug=True, use_reloader=False)
 
 
     def add_handlers(self):
@@ -39,20 +46,29 @@ class Plotter:
         def update_time_series():
             # plot the actual system
             # TODO: copy?!
-            df = self.inspector.df.copy()
-            trace = Scatter(
-                y=df['PAseasonal'],
-                mode='lines',
-            )
-            return Figure(data=[trace])
+            try:
+                (df, fc) = self.plotting_queue.get(block=False)
+
+                trace = Scatter(
+                    y=df['PAseasonal'],
+                    mode='lines',
+                )
+                return Figure(data=[trace])
+            except:
+                return None
 
         @self.app.callback(output=Output('start-button', 'disabled'),
                         events=[Event('start-button', 'click')])
         def button_start():
-            # start the reader and the inspector here
-            # grey out button after press
-            log.info("BUTTON PRESSED!")
-            # self.inspector.start()
+            self.inspector_thread.start()
+            log.info("started inspector from button")
+            self.reader_thread.start()
+            log.info("started reader from button")
+            return True
+
+
+        def shutdown():
+            pass
 
 
     # @app.callback(output=Output('time-series', 'figure'),

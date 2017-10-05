@@ -68,6 +68,7 @@ class Inspector:
 
     def start(self):
         # silence suppresses stdout (to deal with pystan bug)
+        log.debug("Starting Inspector...")
         with helpers.silence():
             for row in self.receive():
                 assert len(self.args.systems) == len(row[1:])
@@ -105,13 +106,13 @@ class Inspector:
 
                 # pass data through to plotting engine
                 # yield (date, values)
+
                 if self.args.gui:
-                    try:
+                    while not self.plotting_queue.empty():
                         self.plotting_queue.get()
-                    except:
-                        pass
-                    finally:
-                        self.plotting_queue.put(self)
+
+                    # TODO: rm copy()
+                    self.plotting_queue.put((self.df.copy(), self.forecast.copy()))
 
 
     def receive(self):
@@ -122,18 +123,26 @@ class Inspector:
         yielded for further analysis and plotting.
         """
         while True:
-            new_row = self.reader_queue.get()
-            if new_row is None:
-                log.debug('The queue is empty. The Inspector has finished.')
-                return
+            try:
+                new_row = self.reader_queue.get(block=False)
 
-            # prevent weird pandas error "setting an array element with a sequence"
-            if len(new_row) == 2:
-                self.df.loc[new_row.Index, self.args.systems] = new_row[1:][0]
-            else:
-                self.df.loc[new_row.Index, self.args.systems] = new_row[1:]
+                if new_row is None:
+                    log.debug('The queue is empty. The Inspector has finished.')
+                    return
 
-            yield new_row
+                # prevent weird pandas error "setting an array element with a sequence"
+                if len(new_row) == 2:
+                    self.df.loc[new_row.Index, self.args.systems] = new_row[1:][0]
+                else:
+                    self.df.loc[new_row.Index, self.args.systems] = new_row[1:]
+
+                yield new_row
+            except:
+                # empty
+                # time.sleep(0.5)
+                pass
+
+
 
     def eval_actual(self, date, system):
         """Evaluate the deviation between model- and actual data for given date.
