@@ -15,41 +15,66 @@ from plotly.graph_objs import Figure, Scatter
 log = logging.getLogger(__name__)
 
 
-
-app = dash.Dash()
-
-app.layout = html.Div([
-    html.Button('Start', id='start-button'),
-    dcc.Graph(id='time-series'),
-    dcc.Interval(id='graph-update', interval=1000),
-])
-
-@app.callback(output=Output('time-series', 'figure'),
-                events=[Event('graph-update', 'interval')])
-
-
+class Plotter:
+    def __init__(self, inspector, queue):
+        self.inspector = inspector
+        self.plotting_queue = queue
+        self.app = dash.Dash(name=__package__, csrf_protect=False)
+        self.app.layout = html.Div([
+            html.Button('Start', id='start-button'),
+            dcc.Graph(id='time-series'),
+            dcc.Interval(id='graph-update', interval=1000),
+        ])
+        self.add_handlers()
 
 
-class Plotter(dash.Dash):
-    def __init__(self, mosyco, plotting_queue, **kwargs):
-        super().__init__(self, **kwargs)
-        super().__init__(self, csrf_protect=False, **kwargs)
+    def run(self):
+        self.app.run_server(debug=True, use_reloader=False)
 
-        self.mosyco = mosyco
-        self.plotting_queue = plotting_queue
 
-    def update_time_series(self):
-        # plot the actual system
-        # TODO: copy?!
-        df = self.mosyco.inspector.df.copy()
-        trace = Scatter(
-            y=df['PAseasonal'],
-            mode='lines',
-        )
-        return Figure(data=[trace])
+    def add_handlers(self):
 
-    # def run_server(self, mosyco,**kwargs):
-    #     super().__run_server__(self, **kwargs)
+        @self.app.callback(output=Output('time-series', 'figure'),
+                    events=[Event('graph-update', 'interval')])
+        def update_time_series():
+            # plot the actual system
+            # TODO: copy?!
+            df = self.inspector.df.copy()
+            trace = Scatter(
+                y=df['PAseasonal'],
+                mode='lines',
+            )
+            return Figure(data=[trace])
+
+        @self.app.callback(output=Output('start-button', 'disabled'),
+                        events=[Event('start-button', 'click')])
+        def button_start():
+            # start the reader and the inspector here
+            # grey out button after press
+            log.info("BUTTON PRESSED!")
+            # self.inspector.start()
+
+
+    # @app.callback(output=Output('time-series', 'figure'),
+    #                 events=[Event('graph-update', 'interval')])
+    # def update_time_series(self):
+    #     # plot the actual system
+    #     # TODO: copy?!
+    #     df = self.mosyco.inspector.df.copy()
+    #     trace = Scatter(
+    #         y=df['PAseasonal'],
+    #         mode='lines',
+    #     )
+    #     return Figure(data=[trace])
+
+
+    # @app.callback(output=Output('start-button', 'disabled'),
+    #                 events=[Event('start-button', 'click')])
+    # def button_start():
+    #     # start the reader and the inspector here
+    #     # grey out button after press
+    #     log.info("BUTTON PRESSED!")
+    #     # self.inspector.start()
 
 
 # import matplotlib

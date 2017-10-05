@@ -37,10 +37,6 @@ class Mosyco():
         self.args = args
         self.reader_queue = queue.Queue()
         self.plotting_queue = None
-        if self.args.gui:
-            self.plotting_queue = queue.Queue()
-            self.plotter = Plotter(self, self.plotting_queue, name=__package__)
-
 
         self.reader = Reader(args.systems, self.reader_queue)
         self.inspector = Inspector(self.reader.df.index,
@@ -49,19 +45,23 @@ class Mosyco():
                                     self.reader_queue,
                                     self.plotting_queue)
 
+        if self.args.gui:
+            self.plotting_queue = queue.Queue()
+            self.plotter = Plotter(self.inspector, self.plotting_queue)
+
         self.deviation_count = 0
 
     def run(self):
         """Start and run the Mosyco system."""
         self.reader.start()
 
-        # The Inspector either runs through the GUI loop or standalone
-        if self.args.gui:
-            # TODO: integrate inspector into server...
-            self.inspector_thread = threading.Thread(name='inspector_thread',
-                                                target=self.inspector.start)
+         # TODO: integrate inspector into server...
+        self.inspector_thread = Thread(name='inspector_thread',
+                                        target=self.inspector.start)
 
-            self.plotter.run_server()
+        # Either start Inspector thread from GUI or manually
+        if self.args.gui:
+            self.plotter.run()
         else:
             self.inspector.start()
 
