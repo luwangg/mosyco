@@ -6,6 +6,8 @@ from dateutil.relativedelta import relativedelta
 from multiprocessing import Process
 from threading import Thread
 
+import sys
+
 import dash
 from dash.dependencies import Output, Event
 import dash_core_components as dcc
@@ -25,6 +27,7 @@ class Plotter:
         self.app = dash.Dash(name=__package__, csrf_protect=False)
         self.app.layout = html.Div([
             html.Button('Start', id='start-button'),
+            html.Button('Quit', id='quit-button'),
             dcc.Graph(id='time-series'),
             dcc.Interval(id='graph-update', interval=3000),
         ])
@@ -42,7 +45,7 @@ class Plotter:
     def add_handlers(self):
 
         @self.app.callback(output=Output('time-series', 'figure'),
-                    events=[Event('graph-update', 'interval')])
+                            events=[Event('graph-update', 'interval')])
         def update_time_series():
             # plot the actual system
             # TODO: copy?!
@@ -58,7 +61,7 @@ class Plotter:
                 return None
 
         @self.app.callback(output=Output('start-button', 'disabled'),
-                        events=[Event('start-button', 'click')])
+                            events=[Event('start-button', 'click')])
         def button_start():
             self.inspector_thread.start()
             log.info("started inspector from button")
@@ -66,9 +69,11 @@ class Plotter:
             log.info("started reader from button")
             return True
 
-
+        @self.app.callback(output=Output('quit-button', 'disabled'),
+                            events=[Event('quit-button', 'click')])
         def shutdown():
-            pass
+            log.info("User pressed quit button. Shutting down...")
+            sys.exit()
 
 
     # @app.callback(output=Output('time-series', 'figure'),
