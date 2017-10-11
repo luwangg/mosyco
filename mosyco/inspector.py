@@ -108,11 +108,12 @@ class Inspector:
                 # yield (date, values)
 
                 if self.args.gui:
-                    while not self.plotting_queue.empty():
-                        self.plotting_queue.get()
+                    yield row._asdict()
+                    # while not self.plotting_queue.empty():
+                    #     self.plotting_queue.get()
 
-                    # TODO: rm copy()
-                    self.plotting_queue.put((self.df.copy(), self.forecast.copy()))
+                    # # TODO: rm copy()
+                    # self.plotting_queue.put((self.df.copy(), self.forecast.copy()))
 
 
     def receive(self):

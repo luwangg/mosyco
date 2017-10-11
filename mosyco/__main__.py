@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from queue import Queue
-import multiprocessing as mp
+# import multiprocessing as mp
 
 from mosyco.plotter import Plotter
 from mosyco.inspector import Inspector
@@ -33,7 +33,8 @@ class Mosyco():
         """
         self.args = args
         self.reader_queue = Queue()
-        self.plotting_queue = mp.Queue()
+        # self.plotting_queue = mp.Queue()
+        self.plotting_queue = Queue()
 
         self.reader = Reader(args.systems, self.reader_queue)
         self.inspector = Inspector(self.reader.df.index,
