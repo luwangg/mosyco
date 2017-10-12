@@ -145,6 +145,10 @@ class Plotter(QtWidgets.QApplication):
 
 
         self.canvas = FigureCanvas(self.fig)
+        self.canvas.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                    QtWidgets.QSizePolicy.Expanding)
+
+        self.canvas.updateGeometry()
 
         self.main_widget = QtWidgets.QWidget()
         self.main_widget.setAttribute(QtCore.Qt.WA_DeleteOnClose)
