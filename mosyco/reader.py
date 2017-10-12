@@ -29,7 +29,7 @@ class Reader(threading.Thread):
             sources (str): list of column names for actual value data
         """
         # For now we pretend that these values come from a system:
-        super().__init__()
+        super().__init__(daemon=True)
         self.df = helpers.load_dataframe()
         self.queue = queue
         self.systems = sources
