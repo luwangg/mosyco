@@ -105,12 +105,19 @@ class Inspector:
                                     daemon=True)
                         t.start()
 
+
+                        # TODO
+                        t.join()
+
+
+
                 # pass data through to plotting engine
                 # will turn this into a generator object...
                 # yield (date, values)
 
                 if self.args.gui:
-                #     yield row._asdict()
+                    yield row._asdict()
+
                     while not self.plotting_queue.empty():
                         self.plotting_queue.get()
 
@@ -127,7 +134,7 @@ class Inspector:
         """
         while True:
             try:
-                new_row = self.reader_queue.get(block=False)
+                new_row = self.reader_queue.get(block=True)
 
                 if new_row is None:
                     log.debug('The queue is empty. The Inspector has finished.')
