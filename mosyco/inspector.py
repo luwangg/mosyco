@@ -107,7 +107,7 @@ class Inspector:
 
 
                         # TODO
-                        t.join()
+                        # t.join()
 
 
 

@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 import matplotlib
-matplotlib.use('Qt5Agg')
+matplotlib.use('TkAgg')
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import tkinter as Tk
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
 import logging
 import numpy as np
 from dateutil.relativedelta import relativedelta
+import sys
+import functools
 
 log = logging.getLogger(__name__)
 
@@ -38,15 +42,10 @@ class Plotter:
         self.artists = []
         self.prepare_plot()
 
-    def show_plot(self):
-        """Display the animation window and start the FuncAnimation."""
-        plt.show()
-
 
     def run(self):
         self.reader_thread.start()
-        plt.show()
-        # Tk.mainloop()
+        Tk.mainloop()
 
         # self.show_plot()
         # OR
@@ -129,6 +128,9 @@ class Plotter:
         # tight_layout call should be at the end of this function
         self.fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
+        # prepare the canvas
+        self.prepare_canvas()
+
         # setup animation
         self.ani = animation.FuncAnimation(
             fig=self.fig,
@@ -139,6 +141,15 @@ class Plotter:
             blit=False,
             )
 
+    def prepare_canvas(self):
+        """Prepare the Backend Canvas for drawing on it."""
+        self.root = Tk.Tk()
+
+        self.root.protocol('WM_DELETE_WINDOW', sys.exit)
+
+
+        canvas = FigureCanvasTkAgg(self.fig, master=self.root)
+        canvas.get_tk_widget().grid(column=0, row=0)
 
     def init_plot(self):
         """This function is called once before the first frame is drawn."""
