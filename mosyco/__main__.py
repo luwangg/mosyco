@@ -56,7 +56,8 @@ class Mosyco():
             self.plotter.run()
         else:
             self.reader.start()
-            self.inspector.start()
+            for _ in self.inspector.start():
+                pass
 
 
 # ==============================================================================
