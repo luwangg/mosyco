@@ -2,6 +2,7 @@
 import numpy as np
 import pandas as pd
 import logging
+import time
 
 from threading import Thread
 from fbprophet import Prophet
@@ -105,15 +106,16 @@ class Inspector:
                         t.start()
 
                 # pass data through to plotting engine
+                # will turn this into a generator object...
                 # yield (date, values)
 
                 if self.args.gui:
-                    yield row._asdict()
-                    # while not self.plotting_queue.empty():
-                    #     self.plotting_queue.get()
+                #     yield row._asdict()
+                    while not self.plotting_queue.empty():
+                        self.plotting_queue.get()
 
                     # # TODO: rm copy()
-                    # self.plotting_queue.put((self.df.copy(), self.forecast.copy()))
+                    self.plotting_queue.put((self.df.copy(), self.forecast.copy()))
 
 
     def receive(self):
@@ -138,10 +140,10 @@ class Inspector:
                     self.df.loc[new_row.Index, self.args.systems] = new_row[1:]
 
                 yield new_row
-            except:
-                # empty
-                # time.sleep(0.5)
-                pass
+            except Exception as e:
+                log.info('Exception in mosyco.inspector.receive: {}'.format(e))
+                time.sleep(0.5)
+                continue
 
 
 

@@ -55,13 +55,8 @@ class Mosyco():
         if self.args.gui:
             self.plotter.run()
         else:
+            self.reader.start()
             self.inspector.start()
-            # self.reader.start()
-            # import threading
-            # self.i_thread = threading.Thread(target=self.inspector.start)
-            # self.i_thread.start()
-            # self.i_thread.join()
-            # self.inspector.start()
 
 
 # ==============================================================================

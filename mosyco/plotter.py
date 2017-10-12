@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
 import matplotlib
-matplotlib.use('Qt5Agg')
+matplotlib.use('TkAgg')
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import tkinter as Tk
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+
 import logging
 import numpy as np
 from dateutil.relativedelta import relativedelta
+import threading
 
 log = logging.getLogger(__name__)
 
@@ -37,12 +41,36 @@ class Plotter:
         self.artists = []
         self.prepare_plot()
 
+        root = Tk.Tk()
+        label = Tk.Label(root, text='Mosyco')
+        label.grid(column=0, row=0)
+
+        canvas = FigureCanvasTkAgg(self.fig, master=root)
+        canvas.get_tk_widget().grid(column=0, row=1)
+
+
     def show_plot(self):
         """Display the animation window and start the FuncAnimation."""
         plt.show()
 
+
     def run(self):
-        self.show_plot()
+        self.reader_thread.start()
+
+        # setup animation
+        self.ani = animation.FuncAnimation(
+            fig=self.fig,
+            func=self.update_plot,
+            init_func=self.init_plot,
+            frames=self.inspector.start,
+            interval=200,
+            blit=False,
+            )
+
+        # plt.show()
+        Tk.mainloop()
+
+        # self.show_plot()
         # OR
         # self.p = Process(name='Plotter', target=self.show_plot)
         # self.p.start()
@@ -123,15 +151,6 @@ class Plotter:
         # tight_layout call should be at the end of this function
         self.fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
-        # setup animation
-        self.ani = animation.FuncAnimation(
-            fig=self.fig,
-            func=self.update_plot,
-            init_func=self.init_plot,
-            frames=self.inspector.start,
-            interval=200,
-            blit=False,
-            )
 
     def init_plot(self):
         """This function is called once before the first frame is drawn."""
