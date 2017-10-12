@@ -106,18 +106,10 @@ class Inspector:
                         t.start()
 
 
-                        # TODO
-                        # t.join()
-
-
-
-                # pass data through to plotting engine
-                # will turn this into a generator object...
-                # yield (date, values)
-
                 if self.args.gui:
                     yield row._asdict()
 
+                    # TODO: remove this if not using mp
                     while not self.plotting_queue.empty():
                         self.plotting_queue.get()
 

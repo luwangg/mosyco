@@ -10,7 +10,6 @@ import logging
 import numpy as np
 from dateutil.relativedelta import relativedelta
 import sys
-import functools
 
 log = logging.getLogger(__name__)
 
