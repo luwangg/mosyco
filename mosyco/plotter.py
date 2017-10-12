@@ -1,20 +1,21 @@
 # -*- coding: utf-8 -*-
 import matplotlib
-matplotlib.use('TkAgg')
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import tkinter as Tk
+matplotlib.use('Qt5Agg')
+from matplotlib.backends.backend_qt5agg import FigureCanvas
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from matplotlib.figure import Figure
+
+from PyQt5 import QtCore, QtWidgets
 
 import logging
 import numpy as np
 from dateutil.relativedelta import relativedelta
-import sys
 
 log = logging.getLogger(__name__)
 
 
-class Plotter:
+class Plotter(QtWidgets.QApplication):
     """The Plotter is responsible for animating the Mosyco data.
 
     Attributes:
@@ -23,6 +24,7 @@ class Plotter:
         queue: Queue used for plotting
     """
     def __init__(self, inspector, reader, queue):
+        super().__init__([__package__])
         self.args = inspector.args
         # there is only one model & system if GUI mode
         self.system_name = inspector.args.systems[0]
@@ -44,12 +46,9 @@ class Plotter:
 
     def run(self):
         self.reader_thread.start()
-        Tk.mainloop()
 
-        # self.show_plot()
-        # OR
-        # self.p = Process(name='Plotter', target=self.show_plot)
-        # self.p.start()
+        self.main_widget.show()
+        self.exec_()
 
 
     def prepare_plot(self):
@@ -59,13 +58,10 @@ class Plotter:
         self.inspector.df[self.system_name] = np.nan
         self.inspector.forecast['yhat'] = np.nan
 
-        self.fig = plt.figure()
+        self.fig = Figure()
         self.ax1 = self.fig.add_subplot(211)
         self.ax2 = self.fig.add_subplot(212)
-        self.fig.canvas.set_window_title('Mosyco')
 
-        self.fig.suptitle('Model-/System-Controller Architecture Prototype'
-                          , fontsize=14, fontweight='bold')
 
         self.ax1.set_title('Detailed System View')
         self.ax2.set_title('System Overview')
@@ -121,11 +117,15 @@ class Plotter:
 
         # rotate tick labels for all subplots
         for ax in self.fig.axes:
-            matplotlib.pyplot.sca(ax)
-            plt.xticks(rotation=30)
+            # matplotlib.pyplot.sca(ax)
+            # plt.xticks(rotation=30)
+            for label in ax.get_xticklabels():
+                label.set_rotation(30)
+
 
         # tight_layout call should be at the end of this function
-        self.fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+        self.fig.set_tight_layout(True)
+        # self.fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
         # prepare the canvas
         self.prepare_canvas()
@@ -142,13 +142,20 @@ class Plotter:
 
     def prepare_canvas(self):
         """Prepare the Backend Canvas for drawing on it."""
-        self.root = Tk.Tk()
-
-        self.root.protocol('WM_DELETE_WINDOW', sys.exit)
 
 
-        canvas = FigureCanvasTkAgg(self.fig, master=self.root)
-        canvas.get_tk_widget().grid(column=0, row=0)
+        self.canvas = FigureCanvas(self.fig)
+
+        self.main_widget = QtWidgets.QWidget()
+        self.main_widget.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.main_widget.setWindowTitle('Model-/System-Controller '
+            + 'Architecture Prototype')
+
+        layout = QtWidgets.QVBoxLayout(self.main_widget)
+        layout.addWidget(self.canvas)
+
+        self.main_widget.setFocus()
+
 
     def init_plot(self):
         """This function is called once before the first frame is drawn."""
