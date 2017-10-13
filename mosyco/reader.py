@@ -44,3 +44,4 @@ class Reader(threading.Thread):
             time.sleep(0.001)
         # signal that reader is done
         self.queue.put(None)
+        log.debug("The Reader is not idle.")

@@ -69,7 +69,7 @@ class Inspector:
 
     def start(self):
         # silence suppresses stdout (to deal with pystan bug)
-        log.debug("Starting Inspector...")
+        log.info("Starting Inspector...")
         with helpers.silence():
             for row in self.receive():
                 assert len(self.args.systems) == len(row[1:])
@@ -115,6 +115,8 @@ class Inspector:
 
                     # # TODO: rm copy()
                     self.plotting_queue.put((self.df.copy(), self.forecast.copy()))
+
+        log.info("The Inspector has finished!")
 
 
     def receive(self):
