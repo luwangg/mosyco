@@ -44,6 +44,12 @@ For example, to print the help message::
 
     python -m mosyco --help
 
+Or to run in GUI-Mode::
+
+    python -m mosyco --gui
+
+NOTE: GUI-Mode requires PyQt5. You can press SPACE in order
+to pause/unpause the animation and ESC to quit.
 
 `Link to the data preparation notebook <https://vab9.github.io/observer/>`_
 

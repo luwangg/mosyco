@@ -39,21 +39,23 @@ class Plotter(QtWidgets.QApplication):
         self.half_period_length = relativedelta(months=6)
         self.deviation_count = 0
         self.artists = []
+        self.paused = False
         self.prepare_plot()
 
 
     def run(self):
         # Todo: Daemon?!
-        self.process = mp.Process(target=self._run_system, daemon=True)
+        self.process = mp.Process(target=self._run_mosyco, daemon=True)
         self.process.start()
         # start gui
         self.main_widget.show()
         self.exec_()
 
 
-    def _run_system(self):
+    def _run_mosyco(self):
         self.reader_thread.start()
         self.inspector.start()
+
 
 
     def prepare_plot(self):
@@ -139,17 +141,14 @@ class Plotter(QtWidgets.QApplication):
         self.ani = animation.FuncAnimation(
             fig=self.fig,
             func=self.update,
-            init_func=self.init_plot,
             frames=self.get_data,
             interval=40,
             blit=False,
-            # repeat=False,
             )
+
 
     def prepare_canvas(self):
         """Prepare the Backend Canvas for drawing on it."""
-
-
         self.canvas = FigureCanvas(self.fig)
         self.canvas.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
                                     QtWidgets.QSizePolicy.Expanding)
@@ -164,15 +163,24 @@ class Plotter(QtWidgets.QApplication):
         layout = QtWidgets.QVBoxLayout(self.main_widget)
         layout.addWidget(self.canvas)
 
-        self.main_widget.setFocus()
+        self.canvas.setFocusPolicy(QtCore.Qt.StrongFocus)
+        self.canvas.setFocus()
 
+        def keypress(self, e):
+            if e.key == 'escape':
+                self.closeAllWindows()
+            elif e.key == ' ':
+                # pause / unpause
+                self.paused = not self.paused
 
-    def init_plot(self):
-        """This function is called once before the first frame is drawn."""
-        return self.artists
+        self.canvas.mpl_connect('key_press_event', keypress)
+
 
     def get_data(self):
         """Receive data from the inspector."""
+        while self.paused:
+            yield None
+
         try:
             yield self.plotting_queue.get_nowait()
         except Exception:
