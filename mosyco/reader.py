@@ -41,7 +41,7 @@ class Reader(threading.Thread):
         frame = self.df.loc[:, self.systems]
         for entry in frame.itertuples():
             self.queue.put(entry)
-            time.sleep(0.001)
+            time.sleep(0.01)
         # signal that reader is done
         self.queue.put(None)
         log.debug("The Reader is now idle.")
