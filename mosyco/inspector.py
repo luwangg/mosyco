@@ -92,8 +92,7 @@ class Inspector:
                     period = pd.Period(next_year)
 
                     # generate forecasts for each system
-                    # if date.year == 2015:
-                    if date.year == 1996:
+                    if date.year == 2015:
                         break
                     for system in self.args.systems:
                         log.info(f'Generating {system} forecast for {period}...')
