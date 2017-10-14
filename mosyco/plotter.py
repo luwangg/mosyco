@@ -8,12 +8,9 @@ from matplotlib.figure import Figure
 
 from PyQt5 import QtCore, QtWidgets
 
-import logging
 import numpy as np
 from dateutil.relativedelta import relativedelta
 import multiprocessing as mp
-
-log = logging.getLogger(__name__)
 
 
 class Plotter(QtWidgets.QApplication):
@@ -54,7 +51,6 @@ class Plotter(QtWidgets.QApplication):
 
 
     def _run_system(self):
-        log.info('Mosyco-Process started')
         self.reader_thread.start()
         self.inspector.start()
 
@@ -175,7 +171,6 @@ class Plotter(QtWidgets.QApplication):
 
     def get_row(self):
         if not self.pipe.poll():
-            log.debug('Pipe is empty')
             yield None
         else:
             yield self.pipe.recv()
