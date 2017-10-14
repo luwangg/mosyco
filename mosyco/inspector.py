@@ -34,7 +34,7 @@ class Inspector:
         forecast (DataFrame): is filled with forecasts in regular intervals.
         threshold (float): percentage threshold for actual-model deviations.
     """
-    def __init__(self, index, model_columns, args, reader_queue, plotting_queue):
+    def __init__(self, index, model_columns, args, reader_queue, pipe):
         """Create a new Inspector.
 
         The index should be the reader's index. This means that the reader and
@@ -54,7 +54,7 @@ class Inspector:
             self.df[s] = np.nan
 
         self.reader_queue = reader_queue
-        self.plotting_queue = plotting_queue
+        self.pipe = pipe
 
         # add 'ds' (Date) column for fbprohet
         self.df['ds'] = self.df.index
@@ -107,15 +107,13 @@ class Inspector:
 
 
                 if self.args.gui:
-                    yield row._asdict()
+                    self.pipe.send(row._asdict())
+                    time.sleep(0.01)
+                    # yield row._asdict()
 
-                    # TODO: remove this if not using mp
-                    while not self.plotting_queue.empty():
-                        self.plotting_queue.get()
-
-                    # # TODO: rm copy()
-                    self.plotting_queue.put((self.df.copy(), self.forecast.copy()))
-
+        # wait for plotter to finish...
+        log.info('sleeoping')
+        time.sleep(20)
         log.info("The Inspector has finished!")
 
 

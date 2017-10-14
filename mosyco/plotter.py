@@ -11,6 +11,7 @@ from PyQt5 import QtCore, QtWidgets
 import logging
 import numpy as np
 from dateutil.relativedelta import relativedelta
+import multiprocessing as mp
 
 log = logging.getLogger(__name__)
 
@@ -21,19 +22,18 @@ class Plotter(QtWidgets.QApplication):
     Attributes:
         inspector: Reference to the Inspector object
         reader: Reference to the Reader object
-        queue: Queue used for plotting
+        pipe: Pipe used for communicating with Inspector
     """
-    def __init__(self, inspector, reader, queue):
+    def __init__(self, args, reader, inspector, pipe):
         super().__init__([__package__])
-        self.args = inspector.args
-        # there is only one model & system if GUI mode
-        self.system_name = inspector.args.systems[0]
-        self.model_name = inspector.args.models[0]
+        self.args = args
+        # there is only one model & system in GUI mode
+        self.system_name = args.systems[0]
+        self.model_name = args.models[0]
         self.reader_thread = reader
-        # self.inspector_thread = Thread(name='inspector_thread',
-        #                                 target=inspector.start)
         self.inspector = inspector
-        self.plotting_queue = queue
+        self.pipe = pipe
+        self.df = inspector.df.copy()
 
         # TODO: get this from somewhere or leave as default
         # need to be half the period b/c we need to divide it later
@@ -45,17 +45,25 @@ class Plotter(QtWidgets.QApplication):
 
 
     def run(self):
-        self.reader_thread.start()
-
+        # Todo: Daemon?!
+        self.process = mp.Process(target=self._run_system, daemon=True)
+        self.process.start()
+        # start gui
         self.main_widget.show()
         self.exec_()
+
+
+    def _run_system(self):
+        log.info('Mosyco-Process started')
+        self.reader_thread.start()
+        self.inspector.start()
 
 
     def prepare_plot(self):
         """Prepare drawable objects for the animation."""
 
         plt.style.use('seaborn')
-        self.inspector.df[self.system_name] = np.nan
+        self.df[self.system_name] = np.nan
         self.inspector.forecast['yhat'] = np.nan
 
         self.fig = Figure()
@@ -72,16 +80,16 @@ class Plotter(QtWidgets.QApplication):
         # TODO: better way to initialize line plots than list comprehension ?!
 
         # actual system line
-        (self.ac_line, ) = self.ax1.plot(self.inspector.df.index, [0
-                for i in range(len(self.inspector.df))], c='blue',
+        (self.ac_line, ) = self.ax1.plot(self.df.index, [0
+                for i in range(len(self.df))], c='blue',
                 ls='solid', lw=0.5)
 
         # actual resampled
-        (self.acr_line, ) = self.ax2.plot(self.inspector.df.index, [0
-                for i in range(len(self.inspector.df))], c='blue',
+        (self.acr_line, ) = self.ax2.plot(self.df.index, [0
+                for i in range(len(self.df))], c='blue',
                 ls='solid', lw=0.7)
 
-        rs = self.inspector.df[self.model_name].resample('W').mean()
+        rs = self.df[self.model_name].resample('W').mean()
 
         # model resampled
         (self.m_line, ) = self.ax2.plot(
@@ -104,7 +112,7 @@ class Plotter(QtWidgets.QApplication):
         self.ax2.set_autoscaley_on(True)
 
         # prepare initial limits for the x-axes
-        start_date = self.inspector.df.index[0]
+        start_date = self.df.index[0]
         self.ax1.set_xlim(start_date, start_date
                           + self.half_period_length * 2)
         self.ax2.set_xlim(start_date, start_date
@@ -135,8 +143,8 @@ class Plotter(QtWidgets.QApplication):
             fig=self.fig,
             func=self.update_plot,
             init_func=self.init_plot,
-            frames=self.inspector.start,
-            interval=200,
+            frames=self.get_row,
+            interval=40,
             blit=False,
             )
 
@@ -165,21 +173,35 @@ class Plotter(QtWidgets.QApplication):
         """This function is called once before the first frame is drawn."""
         return self.artists
 
+    def get_row(self):
+        if not self.pipe.poll():
+            log.debug('Pipe is empty')
+            yield None
+        else:
+            yield self.pipe.recv()
+
     def update_plot(self, row):
         """This function updates the plot elements.
 
         It is called in regular interval during the animation loop and is
         responsible for redrawing the lines and axes."""
 
+        if row is None:
+            return self.artists
+
         date = row['Index']
 
+        # add row to df
+        self.df.loc[row['Index'], self.system_name] = row[self.system_name]
+
+
         # resampled plot
-        resampled = self.inspector.df[self.system_name].resample('W'
+        resampled = self.df[self.system_name].resample('W'
                 ).mean()
         self.acr_line.set_data(resampled.index, resampled.values)
 
         # detailed plot
-        self.ac_line.set_ydata(self.inspector.df[self.system_name])
+        self.ac_line.set_ydata(self.df[self.system_name])
 
         # get current upper bound of date axis
         ax1_right_lim = \
@@ -201,13 +223,17 @@ class Plotter(QtWidgets.QApplication):
             self.ax2.set_xlim(date - self.half_period_length * 2, date
                               + self.half_period_length * 2)
 
-        # check if we need to plot new forecast
-        if self.inspector.new_fc_available:
 
-            # reset flag & draw the forecast elements
 
-            self.inspector.new_fc_available = False
-            self.draw_forecast()
+        # # check if we need to plot new forecast
+        # if self.inspector.new_fc_available:
+
+        #     # reset flag & draw the forecast elements
+
+        #     self.inspector.new_fc_available = False
+        #     self.draw_forecast()
+
+
 
         # adjust y-axis
         self.ax1.relim()
@@ -228,7 +254,7 @@ class Plotter(QtWidgets.QApplication):
 
         # resample values for smoother plot
         rs_fc = self.inspector.forecast.resample('W').mean()
-        rs_m = self.inspector.df[self.model_name].resample('W').mean()
+        rs_m = self.df[self.model_name].resample('W').mean()
 
         # We cannot update a PolyCollection so we need to delete the old
         # uncertainty corridor and warning patches and draw a new one.

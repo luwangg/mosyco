@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from queue import Queue
-# import multiprocessing as mp
+import multiprocessing as mp
 
 from mosyco.plotter import Plotter
 from mosyco.inspector import Inspector
@@ -33,18 +33,19 @@ class Mosyco():
         """
         self.args = args
         self.reader_queue = Queue()
-        # self.plotting_queue = mp.Queue()
-        self.plotting_queue = Queue()
+
+        # pipe Connection objects
+        c1, c2 = mp.Pipe()
 
         self.reader = Reader(args.systems, self.reader_queue)
         self.inspector = Inspector(self.reader.df.index.copy(),
                                     self.reader.df[args.models],
                                     self.args,
                                     self.reader_queue,
-                                    self.plotting_queue)
+                                    c1)
 
         if self.args.gui:
-            self.plotter = Plotter(self.inspector, self.reader, self.plotting_queue)
+            self.plotter = Plotter(self.args, self.reader, self.inspector, c2)
 
         self.deviation_count = 0
 
