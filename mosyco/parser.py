@@ -89,7 +89,7 @@ def parse_arguments():
         sys.exit()
 
     if args.quiet:
-        args.loglevel = 0
+        args.loglevel = logging.CRITICAL
     elif args.verbose:
         args.loglevel = logging.DEBUG
     else:
