@@ -34,7 +34,7 @@ class Inspector:
         forecast (DataFrame): is filled with forecasts in regular intervals.
         threshold (float): percentage threshold for actual-model deviations.
     """
-    def __init__(self, index, model_columns, args, reader_queue, pipe):
+    def __init__(self, index, model_columns, args, reader_queue, plotting_queue):
         """Create a new Inspector.
 
         The index should be the reader's index. This means that the reader and
@@ -54,14 +54,13 @@ class Inspector:
             self.df[s] = np.nan
 
         self.reader_queue = reader_queue
-        self.pipe = pipe
+        self.plotting_queue = plotting_queue
 
         # add 'ds' (Date) column for fbprohet
         self.df['ds'] = self.df.index
 
         # add a forecast dataframe with same index as main dataframe
         self.forecast = pd.DataFrame(index=index)
-        self.new_fc_available = False
 
         self.threshold = self.args.threshold
         # \u00B1 is unicode for hte plus-minus character
@@ -93,27 +92,19 @@ class Inspector:
                     period = pd.Period(next_year)
 
                     # generate forecasts for each system
-                    if date.year == 2015:
+                    # if date.year == 2015:
+                    if date.year == 1996:
                         break
                     for system in self.args.systems:
                         log.info(f'Generating {system} forecast for {period}...')
 
-                        # generate the new forecasts separate threads
-                        t = Thread(target=self.predict,
-                                    name='-'.join(['Thread', system, str(period)]),
-                                    args=(period, system),
-                                    daemon=True)
-                        t.start()
+                        # TODO: do something with prediction result? plot
+                        self.predict(period, system)
 
 
                 if self.args.gui:
-                    self.pipe.send(row._asdict())
-                    time.sleep(0.01)
-                    # yield row._asdict()
+                    self.plotting_queue.put(row._asdict())
 
-        # wait for plotter to finish...
-        log.info('sleeoping')
-        time.sleep(20)
         log.info("The Inspector has finished!")
 
 
@@ -140,7 +131,7 @@ class Inspector:
 
                 yield new_row
             except Exception as e:
-                log.info('Exception in mosyco.inspector.receive: {}'.format(e))
+                log.debug('Exception in mosyco.inspector.receive: {}'.format(e))
                 time.sleep(0.5)
                 continue
 
@@ -177,7 +168,6 @@ class Inspector:
     def predict(self, period, system):
         self.forecast_period(period, system)
         res = self.eval_future(period)
-        self.new_fc_available = True
         return res
 
     def eval_future(self, period):
@@ -254,12 +244,8 @@ class Inspector:
         log.info(f'Model-forecast fit: {f_fit:.1%}')
 
         return result
-        # TODO: plot this too?
 
 
-
-
-    # TODO: remove hard-coded column ref. (PAcombi)
     def _fit_model(self, system):
         """Fit the model.
 
@@ -334,6 +320,7 @@ class Inspector:
 
         # new_forecast needs to have DateTimeIndex
         new_forecast.set_index('ds', inplace=True)
+        self.plotting_queue.put(new_forecast)
 
         # merge it into forecast dataframe
         self.forecast = self.forecast.combine_first(new_forecast)

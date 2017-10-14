@@ -33,19 +33,17 @@ class Mosyco():
         """
         self.args = args
         self.reader_queue = Queue()
-
-        # pipe Connection objects
-        c1, c2 = mp.Pipe()
+        plotting_queue = mp.Queue()
 
         self.reader = Reader(args.systems, self.reader_queue)
         self.inspector = Inspector(self.reader.df.index.copy(),
                                     self.reader.df[args.models],
                                     self.args,
                                     self.reader_queue,
-                                    c1)
+                                    plotting_queue)
 
         if self.args.gui:
-            self.plotter = Plotter(self.args, self.reader, self.inspector, c2)
+            self.plotter = Plotter(self.args, self.reader, self.inspector, plotting_queue)
 
         self.deviation_count = 0
 
@@ -57,8 +55,7 @@ class Mosyco():
             self.plotter.run()
         else:
             self.reader.start()
-            for _ in self.inspector.start():
-                pass
+            self.inspector.start()
 
 
 # ==============================================================================

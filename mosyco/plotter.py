@@ -9,6 +9,7 @@ from matplotlib.figure import Figure
 from PyQt5 import QtCore, QtWidgets
 
 import numpy as np
+import pandas as pd
 from dateutil.relativedelta import relativedelta
 import multiprocessing as mp
 
@@ -19,9 +20,9 @@ class Plotter(QtWidgets.QApplication):
     Attributes:
         inspector: Reference to the Inspector object
         reader: Reference to the Reader object
-        pipe: Pipe used for communicating with Inspector
+        plotting_queue: Queue used for communicating with Inspector
     """
-    def __init__(self, args, reader, inspector, pipe):
+    def __init__(self, args, reader, inspector, plotting_queue):
         super().__init__([__package__])
         self.args = args
         # there is only one model & system in GUI mode
@@ -29,11 +30,11 @@ class Plotter(QtWidgets.QApplication):
         self.model_name = args.models[0]
         self.reader_thread = reader
         self.inspector = inspector
-        self.pipe = pipe
+        self.plotting_queue = plotting_queue
         self.df = inspector.df.copy()
 
         # TODO: get this from somewhere or leave as default
-        # need to be half the period b/c we need to divide it later
+        # thi needs to be half the period b/c we need to divide it later
         # and relativedeltas can not always be divided but always multiplied
         self.half_period_length = relativedelta(months=6)
         self.deviation_count = 0
@@ -137,11 +138,12 @@ class Plotter(QtWidgets.QApplication):
         # setup animation
         self.ani = animation.FuncAnimation(
             fig=self.fig,
-            func=self.update_plot,
+            func=self.update,
             init_func=self.init_plot,
-            frames=self.get_row,
+            frames=self.get_data,
             interval=40,
             blit=False,
+            # repeat=False,
             )
 
     def prepare_canvas(self):
@@ -169,20 +171,28 @@ class Plotter(QtWidgets.QApplication):
         """This function is called once before the first frame is drawn."""
         return self.artists
 
-    def get_row(self):
-        if not self.pipe.poll():
+    def get_data(self):
+        """Receive data from the inspector."""
+        try:
+            yield self.plotting_queue.get_nowait()
+        except Exception:
+            # --> queue.Empty exception
             yield None
-        else:
-            yield self.pipe.recv()
 
-    def update_plot(self, row):
-        """This function updates the plot elements.
+    def update(self, obj):
+        """Determine what object was received and update plot accordingly."""
+        if obj is None:
+            return self.artists
+        elif isinstance(obj, pd.DataFrame):
+            return self.plot_forecast(obj)
+        else:
+            return self.plot_actual(obj)
+
+    def plot_actual(self, row):
+        """This function updates various plot elements.
 
         It is called in regular interval during the animation loop and is
         responsible for redrawing the lines and axes."""
-
-        if row is None:
-            return self.artists
 
         date = row['Index']
 
@@ -191,18 +201,16 @@ class Plotter(QtWidgets.QApplication):
 
 
         # resampled plot
-        resampled = self.df[self.system_name].resample('W'
-                ).mean()
+        # TODO: necessary to resample the whole dataframe? or maybe just a window
+        resampled = self.df[self.system_name].resample('W').mean()
         self.acr_line.set_data(resampled.index, resampled.values)
 
         # detailed plot
         self.ac_line.set_ydata(self.df[self.system_name])
 
         # get current upper bound of date axis
-        ax1_right_lim = \
-            matplotlib.dates.num2date(self.ax1.get_xlim()[1])
-        ax2_right_lim = \
-            matplotlib.dates.num2date(self.ax2.get_xlim()[1])
+        ax1_right_lim = matplotlib.dates.num2date(self.ax1.get_xlim()[1])
+        ax2_right_lim = matplotlib.dates.num2date(self.ax2.get_xlim()[1])
 
         # calculate center and remove timezone information for comparison
         ax1_center = ax1_right_lim - self.half_period_length
@@ -219,17 +227,6 @@ class Plotter(QtWidgets.QApplication):
                               + self.half_period_length * 2)
 
 
-
-        # # check if we need to plot new forecast
-        # if self.inspector.new_fc_available:
-
-        #     # reset flag & draw the forecast elements
-
-        #     self.inspector.new_fc_available = False
-        #     self.draw_forecast()
-
-
-
         # adjust y-axis
         self.ax1.relim()
         self.ax2.relim()
@@ -237,28 +234,27 @@ class Plotter(QtWidgets.QApplication):
         self.ax2.autoscale_view(tight=None, scalex=False, scaley=True)
 
         # return all artists that need to be redrawn
-
         return self.artists
 
-    def draw_forecast(self):
-        """Draw the plot elements related to the forecasts.
 
-        This function is called once from within update_plot() when a new
-        forecast is available for drawing.
-        """
+
+    def plot_forecast(self, fc):
+        """Draw a new forecast. Called whenever a new one is available."""
 
         # resample values for smoother plot
-        rs_fc = self.inspector.forecast.resample('W').mean()
-        rs_m = self.df[self.model_name].resample('W').mean()
+        rs_fc = fc.resample('W').mean()
+        # TODO: necessary to resample whole df?
+        # rs_m = self.df[self.model_name].resample('W').mean()
+        rs_m = self.df.loc[fc.index, self.model_name].resample('W').mean()
 
         # We cannot update a PolyCollection so we need to delete the old
         # uncertainty corridor and warning patches and draw a new one.
-        try:
-            self.ci.remove()
-            self.dev_warn_below.remove()
-            self.dev_warn_above.remove()
-        except AttributeError:
-            pass
+        # try:
+        #     self.ci.remove()
+        #     self.dev_warn_below.remove()
+        #     self.dev_warn_above.remove()
+        # except AttributeError:
+        #     pass
 
         # draw forecast confidence interval
         self.ci = self.ax2.fill_between(
@@ -315,3 +311,5 @@ class Plotter(QtWidgets.QApplication):
                             self.dev_warn_below)], ['Live System',
                             'System Model', 'Forecast \u00B1 CI',
                             'Model-Forecast Deviation'])
+
+        return self.artists
