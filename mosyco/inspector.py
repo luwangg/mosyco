@@ -131,7 +131,7 @@ class Inspector:
                 yield new_row
             except Exception as e:
                 log.debug('Exception in mosyco.inspector.receive: {}'.format(e))
-                time.sleep(0.5)
+                time.sleep(0.05)
                 continue
 
 
@@ -313,13 +313,13 @@ class Inspector:
         fc_frame = self.df.loc[period.start_time:period.end_time].filter(['ds'])
 
         # EXPENSIVE - CAN TAKE VERY LONG
-
         new_forecast = self.forecasting_model.predict(fc_frame)
-        del fc_frame
+
 
         # new_forecast needs to have DateTimeIndex
         new_forecast.set_index('ds', inplace=True)
-        self.plotting_queue.put(new_forecast)
-
+        self.plotting_queue.put(new_forecast[['yhat', 'yhat_upper', 'yhat_lower']].resample('W').mean())
+        if self.args.gui:
+            time.sleep(1)
         # merge it into forecast dataframe
         self.forecast = self.forecast.combine_first(new_forecast)

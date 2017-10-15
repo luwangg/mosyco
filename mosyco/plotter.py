@@ -8,11 +8,17 @@ from matplotlib.figure import Figure
 
 from PyQt5 import QtCore, QtWidgets
 
+import logging
 import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 import multiprocessing as mp
+from queue import Empty
 
+from functools import partial
+from collections import defaultdict, deque
+
+log = logging.getLogger(__name__)
 
 class Plotter(QtWidgets.QApplication):
     """The Plotter is responsible for animating the Mosyco data.
@@ -31,10 +37,17 @@ class Plotter(QtWidgets.QApplication):
         self.reader_thread = reader
         self.inspector = inspector
         self.plotting_queue = plotting_queue
-        self.df = inspector.df.copy()
+
+        # dic attempt
+        # defaultdict w/ column names as keys and a deque of equal length
+        # for each column...
+        # model series
+        self.model_data = inspector.df[self.model_name].copy()
+        self.data = defaultdict(partial(deque, maxlen=1000))
+
 
         # TODO: get this from somewhere or leave as default
-        # thi needs to be half the period b/c we need to divide it later
+        # this needs to be half the period b/c we need to divide it later
         # and relativedeltas can not always be divided but always multiplied
         self.half_period_length = relativedelta(months=6)
         self.deviation_count = 0
@@ -62,8 +75,6 @@ class Plotter(QtWidgets.QApplication):
         """Prepare drawable objects for the animation."""
 
         plt.style.use('seaborn')
-        self.df[self.system_name] = np.nan
-        self.inspector.forecast['yhat'] = np.nan
 
         self.fig = Figure()
         self.ax1 = self.fig.add_subplot(211)
@@ -79,16 +90,13 @@ class Plotter(QtWidgets.QApplication):
         # TODO: better way to initialize line plots than list comprehension ?!
 
         # actual system line
-        (self.ac_line, ) = self.ax1.plot(self.df.index, [0
-                for i in range(len(self.df))], c='blue',
-                ls='solid', lw=0.5)
+        (self.ac_line, ) = self.ax1.plot([], [], c='blue', ls='solid', lw=0.5)
 
         # actual resampled
-        (self.acr_line, ) = self.ax2.plot(self.df.index, [0
-                for i in range(len(self.df))], c='blue',
-                ls='solid', lw=0.7)
+        (self.acr_line, ) = self.ax2.plot([], [], c='blue', ls='solid', lw=0.7)
 
-        rs = self.df[self.model_name].resample('W').mean()
+
+        rs = self.model_data.resample('W').mean()
 
         # model resampled
         (self.m_line, ) = self.ax2.plot(
@@ -111,7 +119,7 @@ class Plotter(QtWidgets.QApplication):
         self.ax2.set_autoscaley_on(True)
 
         # prepare initial limits for the x-axes
-        start_date = self.df.index[0]
+        start_date = self.model_data.index[0]
         self.ax1.set_xlim(start_date, start_date
                           + self.half_period_length * 2)
         self.ax2.set_xlim(start_date, start_date
@@ -124,8 +132,7 @@ class Plotter(QtWidgets.QApplication):
 
         # rotate tick labels for all subplots
         for ax in self.fig.axes:
-            # matplotlib.pyplot.sca(ax)
-            # plt.xticks(rotation=30)
+            ax.xaxis_date()
             for label in ax.get_xticklabels():
                 label.set_rotation(30)
 
@@ -142,7 +149,7 @@ class Plotter(QtWidgets.QApplication):
             fig=self.fig,
             func=self.update,
             frames=self.get_data,
-            interval=40,
+            interval=200,
             blit=False,
             )
 
@@ -166,7 +173,7 @@ class Plotter(QtWidgets.QApplication):
         self.canvas.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.canvas.setFocus()
 
-        def keypress(self, e):
+        def keypress(e):
             if e.key == 'escape':
                 self.closeAllWindows()
             elif e.key == ' ':
@@ -178,14 +185,34 @@ class Plotter(QtWidgets.QApplication):
 
     def get_data(self):
         """Receive data from the inspector."""
-        while self.paused:
-            yield None
+        while True:
+            while self.paused:
+                yield None
 
-        try:
-            yield self.plotting_queue.get_nowait()
-        except Exception:
-            # --> queue.Empty exception
-            yield None
+            new_data = []
+            fc = None
+
+            while len(new_data) < 3:
+                try:
+                    obj = self.plotting_queue.get_nowait()
+                except Empty:
+                    break
+
+                if isinstance(obj, dict):
+                    new_data.append(obj)
+                else:
+                    # object is a new forecast
+                    fc = obj
+                    break
+
+
+            if len(new_data) > 0:
+                yield new_data
+                if fc is not None:
+                    yield fc
+            else:
+                yield fc
+
 
     def update(self, obj):
         """Determine what object was received and update plot accordingly."""
@@ -196,25 +223,34 @@ class Plotter(QtWidgets.QApplication):
         else:
             return self.plot_actual(obj)
 
-    def plot_actual(self, row):
+
+    def plot_actual(self, rows):
         """This function updates various plot elements.
 
         It is called in regular interval during the animation loop and is
         responsible for redrawing the lines and axes."""
 
-        date = row['Index']
+        # add new rows to plotting data
+        for row in rows:
+            for k, v in row.items():
+                self.data[k].append(v)
 
-        # add row to df
-        self.df.loc[row['Index'], self.system_name] = row[self.system_name]
+        # last row is current date
+        date = rows[-1]['Index']
 
+        # create date array for mpl
+        idx = matplotlib.dates.date2num(self.data['Index'])
 
         # resampled plot
         # TODO: necessary to resample the whole dataframe? or maybe just a window
-        resampled = self.df[self.system_name].resample('W').mean()
-        self.acr_line.set_data(resampled.index, resampled.values)
+        # resampled = self.df[self.system_name].resample('W').mean()
+        # self.acr_line.set_data(resampled.index, resampled.values)
+        self.acr_line.set_data(idx, self.data[self.system_name])
 
         # detailed plot
-        self.ac_line.set_ydata(self.df[self.system_name])
+        # self.ac_line.set_ydata(self.df[self.system_name])
+        self.ac_line.set_data(idx, self.data[self.system_name])
+
 
         # get current upper bound of date axis
         ax1_right_lim = matplotlib.dates.num2date(self.ax1.get_xlim()[1])
@@ -234,10 +270,9 @@ class Plotter(QtWidgets.QApplication):
             self.ax2.set_xlim(date - self.half_period_length * 2, date
                               + self.half_period_length * 2)
 
-
         # adjust y-axis
-        self.ax1.relim()
-        self.ax2.relim()
+        self.ax1.relim(visible_only=True)
+        self.ax2.relim(visible_only=True)
         self.ax1.autoscale_view(tight=None, scalex=False, scaley=True)
         self.ax2.autoscale_view(tight=None, scalex=False, scaley=True)
 
@@ -250,19 +285,18 @@ class Plotter(QtWidgets.QApplication):
         """Draw a new forecast. Called whenever a new one is available."""
 
         # resample values for smoother plot
-        rs_fc = fc.resample('W').mean()
-        # TODO: necessary to resample whole df?
-        # rs_m = self.df[self.model_name].resample('W').mean()
-        rs_m = self.df.loc[fc.index, self.model_name].resample('W').mean()
+        rs_fc = fc
+        rs_m = self.model_data.loc[fc.index].resample('W').mean()
 
         # We cannot update a PolyCollection so we need to delete the old
         # uncertainty corridor and warning patches and draw a new one.
-        # try:
-        #     self.ci.remove()
-        #     self.dev_warn_below.remove()
-        #     self.dev_warn_above.remove()
-        # except AttributeError:
-        #     pass
+        try:
+            self.ci.remove()
+            self.dev_warn_below.remove()
+            self.dev_warn_above.remove()
+        except AttributeError as e:
+            log.debug(e)
+            pass
 
         # draw forecast confidence interval
         self.ci = self.ax2.fill_between(
