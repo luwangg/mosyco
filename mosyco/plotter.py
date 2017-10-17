@@ -8,7 +8,6 @@ from matplotlib.figure import Figure
 from PyQt5 import QtCore, QtWidgets
 
 import logging
-import numpy as np
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 import multiprocessing as mp
