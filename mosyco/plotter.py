@@ -41,8 +41,8 @@ class Plotter(QtWidgets.QApplication):
         # defaultdict w/ column names as keys and a deque of equal length
         # for each column...
         # model series
-        self.model_data = inspector.df[self.model_name].copy()
-        self.data = defaultdict(partial(deque, maxlen=1000))
+        self.model_data = inspector.df[[self.model_name]].copy()
+        self.data = defaultdict(partial(deque, maxlen=400))
 
 
         # TODO: get this from somewhere or leave as default
@@ -141,32 +141,41 @@ class Plotter(QtWidgets.QApplication):
             )
 
     def plot_model(self):
+        # add upper and lower bounds w/ standard threshold
+        # TODO: make variable threshold possible
+        md = self.model_data[self.model_name]
+        self.model_data['upper_bound'] = md + self.args.threshold * md
+        self.model_data['lower_bound'] = md - self.args.threshold * md
+
+        # save a resampled version of the model data
         self.rs_model = self.model_data.resample('W').mean()
+        rs_md = self.rs_model[self.model_name]
 
         # model resampled
         (self.m_line, ) = self.ax1.plot(
-            self.rs_model.index,
-            self.rs_model.values,
+            rs_md.index,
+            rs_md.values,
             c='green',
             ls='solid',
             lw=0.7,
             alpha=0.7,
             )
 
+        # plot the resampled model line
         (self.m_line_bottom, ) = self.ax2.plot(
-            self.rs_model.index,
-            self.rs_model.values,
+            rs_md.index,
+            rs_md.values,
             c='green',
             ls='solid',
             lw=0.7,
             alpha=0.7,
             )
 
-
+        # plot the model threshold
         self.model_error = self.ax1.fill_between(
-            self.rs_model.index,
-            self.rs_model.values - self.args.threshold * self.rs_model.values,
-            self.rs_model.values + self.args.threshold * self.rs_model.values,
+            rs_md.index,
+            rs_md.values - self.args.threshold * rs_md.values,
+            rs_md.values + self.args.threshold * rs_md.values,
             alpha=0.1,
             color='green',
             linestyle=':',
@@ -257,15 +266,15 @@ class Plotter(QtWidgets.QApplication):
         date = rows[-1]['Index']
 
         # resampled plot
-        resampled = pd.Series(index=self.data['Index'],
-                    data=self.data[self.system_name]).resample('W').mean()
-        self.acr_line.set_data(resampled.index, resampled.values)
+        self.resampled_actual = pd.Series(index=self.data['Index'],
+                    data=self.data[self.system_name]).resample('W').mean().iloc[:-7]
+        self.acr_line.set_data(self.resampled_actual.index, self.resampled_actual.values)
 
         # # detailed plot
         # # create date array for mpl
         # idx = matplotlib.dates.date2num(self.data['Index'])
         # self.ac_line.set_data(idx, self.data[self.system_name])
-        self.ac_line.set_data(resampled.index, resampled.values)
+        self.ac_line.set_data(self.resampled_actual.index, self.resampled_actual.values)
 
 
 
@@ -281,6 +290,9 @@ class Plotter(QtWidgets.QApplication):
             self.ax1.set_xlim(date - self.half_period_length, date
                               + self.half_period_length)
 
+        # plot model-actual errors
+        self.plot_model_actual_deviation()
+
         # adjust y-axis
         self.ax1.relim(visible_only=True)
         self.ax2.relim(visible_only=True)
@@ -295,15 +307,13 @@ class Plotter(QtWidgets.QApplication):
     def plot_forecast(self, fc):
         """Draw a new forecast. Called whenever a new one is available."""
 
-        # resample values for smoother plot
-        rs_fc = fc
-        rs_m = self.rs_model.loc[fc.index]
+        rs_m = self.rs_model.loc[fc.index, self.model_name]
 
         # draw forecast confidence interval
         self.fc_error = self.ax2.fill_between(
-            rs_fc.index,
-            rs_fc['yhat_lower'],
-            rs_fc['yhat_upper'],
+            fc.index,
+            fc['yhat_lower'],
+            fc['yhat_upper'],
             alpha=0.1,
             color='orange',
             linestyle=':',
@@ -312,10 +322,10 @@ class Plotter(QtWidgets.QApplication):
         # draw deviation between forecast and model
         # below
         self.dev_warn_below = self.ax2.fill_between(
-            rs_fc.index,
-            rs_fc['yhat_lower'],
+            fc.index,
+            fc['yhat_lower'],
             rs_m.values,
-            where=rs_m.values < rs_fc['yhat_lower'],
+            where=rs_m.values < fc['yhat_lower'],
             interpolate=True,
             alpha=0.3,
             color='red',
@@ -324,10 +334,10 @@ class Plotter(QtWidgets.QApplication):
 
         # above
         self.dev_warn_above = self.ax2.fill_between(
-            rs_fc.index,
-            rs_fc['yhat_upper'],
+            fc.index,
+            fc['yhat_upper'],
             rs_m.values,
-            where=rs_m.values > rs_fc['yhat_upper'],
+            where=rs_m.values > fc['yhat_upper'],
             interpolate=True,
             alpha=0.3,
             color='red',
@@ -336,8 +346,8 @@ class Plotter(QtWidgets.QApplication):
 
 
         (fc_line, ) = self.ax2.plot(
-                rs_fc.index,
-                rs_fc['yhat'],
+                fc.index,
+                fc['yhat'],
                 c='black',
                 ls='dashed',
                 lw=0.7,
@@ -353,24 +363,34 @@ class Plotter(QtWidgets.QApplication):
                              'System Model', 'Forecast \u00B1 CI',
                              'Model-Forecast Deviation'])
 
-
-        # try:
-        #     self.fc_line.set_data(rs_fc.index, rs_fc['yhat'])
-        # except AttributeError:
-        #     (self.fc_line, ) = self.ax2.plot(
-        #         rs_fc.index,
-        #         rs_fc['yhat'],
-        #         c='black',
-        #         ls='dashed',
-        #         lw=0.7,
-        #         alpha=0.4,
-        #         )
-        #     self.artists.append(self.fc_line)
-
-
-
-
         return self.artists
 
     def plot_model_actual_deviation(self):
-        pass
+        # draw deviation between model and actual lines
+        idx = self.resampled_actual.index
+        ml_upper = self.rs_model.loc[idx, 'upper_bound']
+        ml_lower = self.rs_model.loc[idx, 'lower_bound']
+        ac = self.resampled_actual.values
+
+        self.actual_dev_below = self.ax1.fill_between(
+            idx,
+            ml_lower,
+            ac,
+            where=ac < ml_lower,
+            interpolate=True,
+            alpha=0.3,
+            color='red',
+            linestyle=':',
+            )
+
+        # above
+        self.actual_dev_above = self.ax1.fill_between(
+            idx,
+            ml_upper,
+            ac,
+            where=ac > ml_upper,
+            interpolate=True,
+            alpha=0.3,
+            color='red',
+            linestyle=':',
+            )
