@@ -86,11 +86,9 @@ class Plotter(QtWidgets.QApplication):
         self.ax1.set_ylabel('Units')
         self.ax2.set_ylabel('Units')
 
-        # actual system line
-        (self.ac_line, ) = self.ax1.plot([], [], c='blue', ls='solid', lw=0.5)
-
-        # actual resampled
-        (self.acr_line, ) = self.ax2.plot([], [], c='blue', ls='solid', lw=0.7)
+        # actual system lines
+        (self.acl1, ) = self.ax1.plot([], [], c='blue', ls='solid', lw=0.5)
+        (self.acl2, ) = self.ax2.plot([], [], c='blue', ls='solid', lw=0.5)
 
         self.fc_lines = deque(maxlen=4)
 
@@ -98,7 +96,7 @@ class Plotter(QtWidgets.QApplication):
         self.plot_model()
 
         # add lines to artist list
-        self.artists.extend([self.ac_line, self.acr_line])
+        self.artists.extend([self.acl1, self.acl2])
 
         # TODO: set lim automatically
         self.ax1.set_ylim(800, 1300)
@@ -114,13 +112,17 @@ class Plotter(QtWidgets.QApplication):
         # self.ax2.set_xlim(start_date, start_date
         #                   + self.half_period_length * 4)
 
-        # add the legend
-        legend_items = ([self.ac_line, self.acr_line, self.m_line],
-            ['Live System', 'System Weekly Mean', 'Model Weekly Mean'])
+        # add the legends
+        legend1 = ([self.acl1, self.m_line1, self.model_error],
+            ['Live System', 'Model', 'Model Threshold'])
+
+        legend2 = ([self.acl2, self.m_line2],
+            ['Live System', 'Model'])
 
         # self.ax2.legend(*legend_items, loc='center',
         #             bbox_to_anchor=(0.5, -0.6),)
-        self.ax2.legend(*legend_items)
+        self.ax1.legend(*legend1)
+        self.ax2.legend(*legend2)
 
         # rotate tick labels for all subplots
         self.fig.autofmt_xdate()
@@ -152,22 +154,22 @@ class Plotter(QtWidgets.QApplication):
         rs_md = self.rs_model[self.model_name]
 
         # model resampled
-        (self.m_line, ) = self.ax1.plot(
+        (self.m_line1, ) = self.ax1.plot(
             rs_md.index,
             rs_md.values,
             c='green',
             ls='solid',
-            lw=0.7,
+            lw=0.5,
             alpha=0.7,
             )
 
         # plot the resampled model line
-        (self.m_line_bottom, ) = self.ax2.plot(
+        (self.m_line2, ) = self.ax2.plot(
             rs_md.index,
             rs_md.values,
             c='green',
             ls='solid',
-            lw=0.7,
+            lw=0.5,
             alpha=0.7,
             )
 
@@ -265,16 +267,12 @@ class Plotter(QtWidgets.QApplication):
         # last row is current date
         date = rows[-1]['Index']
 
-        # resampled plot
+        # resampled plot; iloc[:-1] cuts of the most recent week
         self.resampled_actual = pd.Series(index=self.data['Index'],
-                    data=self.data[self.system_name]).resample('W').mean().iloc[:-7]
-        self.acr_line.set_data(self.resampled_actual.index, self.resampled_actual.values)
+                    data=self.data[self.system_name]).resample('W').mean().iloc[:-1]
 
-        # # detailed plot
-        # # create date array for mpl
-        # idx = matplotlib.dates.date2num(self.data['Index'])
-        # self.ac_line.set_data(idx, self.data[self.system_name])
-        self.ac_line.set_data(self.resampled_actual.index, self.resampled_actual.values)
+        self.acl1.set_data(self.resampled_actual.index, self.resampled_actual.values)
+        self.acl2.set_data(self.resampled_actual.index, self.resampled_actual.values)
 
 
 
@@ -327,7 +325,7 @@ class Plotter(QtWidgets.QApplication):
             rs_m.values,
             where=rs_m.values < fc['yhat_lower'],
             interpolate=True,
-            alpha=0.3,
+            alpha=0.2,
             color='red',
             linestyle=':',
             )
@@ -339,7 +337,7 @@ class Plotter(QtWidgets.QApplication):
             rs_m.values,
             where=rs_m.values > fc['yhat_upper'],
             interpolate=True,
-            alpha=0.3,
+            alpha=0.2,
             color='red',
             linestyle=':',
             )
@@ -350,17 +348,18 @@ class Plotter(QtWidgets.QApplication):
                 fc['yhat'],
                 c='black',
                 ls='dashed',
-                lw=0.7,
+                lw=0.5,
                 alpha=0.4,
                 )
         self.fc_lines.append(fc_line)
         if len(self.fc_lines) is 1:
             # update legend
              self.ax2.get_legend().remove()
-             self.ax2.legend([self.ac_line, self.m_line, (self.fc_lines[-1],
+             self.ax2.legend([self.acl2, self.m_line2, (self.fc_lines[-1],
                              self.fc_error), (self.dev_warn_above,
-                             self.dev_warn_below)], ['Live System',
-                             'System Model', 'Forecast \u00B1 CI',
+                             self.dev_warn_below)],
+                             ['Live System', 'Model',
+                             'Forecast \u00B1 CI',
                              'Model-Forecast Deviation'])
 
         return self.artists
@@ -372,13 +371,21 @@ class Plotter(QtWidgets.QApplication):
         ml_lower = self.rs_model.loc[idx, 'lower_bound']
         ac = self.resampled_actual.values
 
+        # We cannot update a PolyCollection so we need to delete the old
+        # deviation patches and draw a new one.
+        try:
+            self.actual_dev_below.remove()
+            self.actual_dev_above.remove()
+        except AttributeError:
+            pass
+
         self.actual_dev_below = self.ax1.fill_between(
             idx,
             ml_lower,
             ac,
             where=ac < ml_lower,
             interpolate=True,
-            alpha=0.3,
+            alpha=0.2,
             color='red',
             linestyle=':',
             )
@@ -390,7 +397,13 @@ class Plotter(QtWidgets.QApplication):
             ac,
             where=ac > ml_upper,
             interpolate=True,
-            alpha=0.3,
+            alpha=0.2,
             color='red',
             linestyle=':',
             )
+        if len(self.data['Index']) is 1:
+            self.ax1.get_legend().remove()
+            self.ax1.legend([self.acl1, self.m_line1,
+                            self.model_error, self.actual_dev_below],
+                            ['Live System', 'Model',
+                            'Model Threshold', 'Model-System Deviation'])

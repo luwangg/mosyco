@@ -9,7 +9,7 @@ log = logging.getLogger(__name__)
 model_list = ['PAmodel']
 system_list = ['PAseasonal']
 # DEFAULT THRESHOLD
-default_threshold = 0.0025
+default_threshold = 0.03
 
 desc = ("Prototype for a Model-/System-Controller architecture. "
         "\n\n"
