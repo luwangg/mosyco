@@ -71,11 +71,14 @@ class Inspector:
         log.info("Starting Inspector...")
         with helpers.silence():
             for row in self.receive():
-                assert len(self.args.systems) == len(row[1:])
-                values = row._asdict()
-                date = values.pop('Index')
+                # sanity check
+                assert len(self.args.systems) == len(row) - 1
+                values = row
+                date = values['Index']
 
                 for system_name, val in values.items():
+                    if system_name is 'Index':
+                        continue
                     (exceeds_threshold, _) = self.eval_actual(date, system_name)
                     # TODO: how to output threshold deviations
                     log.debug(f'Date: {date.date()} ' + \
@@ -84,16 +87,13 @@ class Inspector:
                 next_year = date.year + 1
 
                 # at the end of each period, create a forecast for the following
-                # TODO: allow flexible period as argument
                 if date.month == 12 and date.day == 31:
-
-                    log.debug(f'Current date: {date.date()}')
-
                     period = pd.Period(next_year)
 
-                    # generate forecasts for each system
                     if date.year == 2015:
                         break
+
+                    # generate forecasts for each system
                     for system in self.args.systems:
                         log.info(f'Generating {system} forecast for {period}...')
 
@@ -102,7 +102,7 @@ class Inspector:
 
 
                 if self.args.gui:
-                    self.plotting_queue.put(row._asdict())
+                    self.plotting_queue.put(row)
 
         log.info("The Inspector has finished!")
 
@@ -128,7 +128,7 @@ class Inspector:
                 else:
                     self.df.loc[new_row.Index, self.args.systems] = new_row[1:]
 
-                yield new_row
+                yield new_row._asdict()
             except Exception as e:
                 log.debug('Exception in mosyco.inspector.receive: {}'.format(e))
                 time.sleep(0.05)
@@ -227,6 +227,7 @@ class Inspector:
         result = data.loc[:, 'eval'].copy()
 
         # keep only rows were the model falls outside the confidence interval
+        # TODO: necessary???
         model_errors = result[np.isnan(result)]
         # check if any deviations
         if model_errors.empty:
@@ -242,37 +243,12 @@ class Inspector:
         f_fit = result.count() / result.size
         log.info(f'Model-forecast fit: {f_fit:.1%}')
 
-        return result
-
-
-    def _fit_model(self, system):
-        """Fit the model.
-
-        This is a very expensive operation. It creates a new Prophet object each
-        time this function is called. The fitting can take up to 5 seconds on
-        occasion but should generally be quite fast, thanks to
-        `PyStan <https://pystan.readthedocs.io/en/latest/>`_.
-
-        This is the bottleneck that restricts the real-time capability of this
-        program. This implementation is therefore not suitable for use cases
-        that require new forecasts every few seconds or so. However, it works very
-        well for frequencies of once per minute or lower.
-        """
-        # We need to set 'y' column again each time because the actual value
-        # column receives new values in the meantime.
-        # TODO: maybe just call actual data y in dataframe (refactor)
-        # But then --> Problem with multiple variables
-        try:
-            self.df['y'] = self.df[system]
-        except AttributeError as e:
-            raise AttributeError("inspector does not have actual {system} data \
-                                    for forecast yet.")
-
-        # No custom settings for model, b/c we are predicting what we already
-        # know anyways
-        self.forecasting_model = Prophet().fit(self.df)
-
-
+        # plot the forecast if in GUI-Mode
+        if self.args.gui:
+            # TODO: what does plotter really need?
+            fc = data[['yhat', 'yhat_upper', 'yhat_lower']].resample('W').mean()
+            self.plotting_queue.put(fc)
+            time.sleep(1)
 
     def forecast_period(self, period, actual_system):
         """Update forecast dataframe attribute with forecast for the given period.
@@ -310,7 +286,7 @@ class Inspector:
         # TODO: entries for period MUST be empty, else this will raise an exception?!
         # double check / assert here that period is in df
         assert 'ds' in self.df.columns
-        fc_frame = self.df.loc[period.start_time:period.end_time].filter(['ds'])
+        fc_frame = self.df.loc[period.start_time:period.end_time, ['ds']]
 
         # EXPENSIVE - CAN TAKE VERY LONG
         new_forecast = self.forecasting_model.predict(fc_frame)
@@ -318,8 +294,33 @@ class Inspector:
 
         # new_forecast needs to have DateTimeIndex
         new_forecast.set_index('ds', inplace=True)
-        self.plotting_queue.put(new_forecast[['yhat', 'yhat_upper', 'yhat_lower']].resample('W').mean())
-        if self.args.gui:
-            time.sleep(1)
+
         # merge it into forecast dataframe
         self.forecast = self.forecast.combine_first(new_forecast)
+
+    def _fit_model(self, system):
+        """Fit the model.
+
+        This is a very expensive operation. It creates a new Prophet object each
+        time this function is called. The fitting can take up to 5 seconds on
+        occasion but should generally be quite fast, thanks to
+        `PyStan <https://pystan.readthedocs.io/en/latest/>`_.
+
+        This is the bottleneck that restricts the real-time capability of this
+        program. This implementation is therefore not suitable for use cases
+        that require new forecasts every few seconds or so. However, it works very
+        well for frequencies of once per minute or lower.
+        """
+        # We need to set 'y' column again each time because the actual value
+        # column receives new values in the meantime.
+        # TODO: maybe just call actual data y in dataframe (refactor)
+        # But then --> Problem with multiple variables
+        try:
+            self.df['y'] = self.df[system]
+        except AttributeError as e:
+            raise AttributeError("inspector does not have actual {system} data \
+                                    for forecast yet.")
+
+        # No custom settings for model, b/c we are predicting what we already
+        # know anyways
+        self.forecasting_model = Prophet().fit(self.df[['ds', 'y']])

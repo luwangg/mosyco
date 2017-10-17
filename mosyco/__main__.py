@@ -33,7 +33,7 @@ class Mosyco():
         """
         self.args = args
         self.reader_queue = Queue()
-        plotting_queue = mp.Queue()
+        plotting_queue = mp.Queue() if args.gui else None
 
         self.reader = Reader(args.systems, self.reader_queue)
         self.inspector = Inspector(self.reader.df.index.copy(),

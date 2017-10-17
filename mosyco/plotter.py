@@ -95,18 +95,8 @@ class Plotter(QtWidgets.QApplication):
         # actual resampled
         (self.acr_line, ) = self.ax2.plot([], [], c='blue', ls='solid', lw=0.7)
 
-
-        rs = self.model_data.resample('W').mean()
-
-        # model resampled
-        (self.m_line, ) = self.ax2.plot(
-            rs.index,
-            rs.values,
-            c='green',
-            ls='solid',
-            lw=0.7,
-            alpha=0.7,
-            )
+        # plot model w/ standard confidence interval
+        self.plot_model()
 
         # add lines to artist list
         self.artists.extend([self.ac_line, self.acr_line])
@@ -355,3 +345,26 @@ class Plotter(QtWidgets.QApplication):
                             'Model-Forecast Deviation'])
 
         return self.artists
+
+    def plot_model(self):
+        rs = self.model_data.resample('W').mean()
+
+        # model resampled
+        (self.m_line, ) = self.ax2.plot(
+            rs.index,
+            rs.values,
+            c='green',
+            ls='solid',
+            lw=0.7,
+            alpha=0.7,
+            )
+
+
+        self.model_error = self.ax2.fill_between(
+            rs.index,
+            rs.values - self.args.threshold * rs.values,
+            rs.values + self.args.threshold * rs.values,
+            alpha=0.1,
+            color='green',
+            linestyle=':',
+            )
