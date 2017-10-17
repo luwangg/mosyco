@@ -233,12 +233,11 @@ class Plotter(QtWidgets.QApplication):
 
         # resampled plot
         # TODO: necessary to resample the whole dataframe? or maybe just a window
-        # resampled = self.df[self.system_name].resample('W').mean()
-        # self.acr_line.set_data(resampled.index, resampled.values)
-        self.acr_line.set_data(idx, self.data[self.system_name])
+        resampled = pd.Series(index=self.data['Index'],
+                    data=self.data[self.system_name]).resample('W').mean()
+        self.acr_line.set_data(resampled.index, resampled.values)
 
         # detailed plot
-        # self.ac_line.set_ydata(self.df[self.system_name])
         self.ac_line.set_data(idx, self.data[self.system_name])
 
 
@@ -281,7 +280,7 @@ class Plotter(QtWidgets.QApplication):
         # We cannot update a PolyCollection so we need to delete the old
         # uncertainty corridor and warning patches and draw a new one.
         try:
-            self.ci.remove()
+            self.fc_error.remove()
             self.dev_warn_below.remove()
             self.dev_warn_above.remove()
         except AttributeError as e:
@@ -289,11 +288,11 @@ class Plotter(QtWidgets.QApplication):
             pass
 
         # draw forecast confidence interval
-        self.ci = self.ax2.fill_between(
+        self.fc_error = self.ax2.fill_between(
             rs_fc.index,
             rs_fc['yhat_lower'],
             rs_fc['yhat_upper'],
-            alpha=0.2,
+            alpha=0.1,
             color='orange',
             linestyle=':',
             )
@@ -339,7 +338,7 @@ class Plotter(QtWidgets.QApplication):
            # update legend
             self.ax2.get_legend().remove()
             self.ax2.legend([self.ac_line, self.m_line, (self.fc_line,
-                            self.ci), (self.dev_warn_above,
+                            self.fc_error), (self.dev_warn_above,
                             self.dev_warn_below)], ['Live System',
                             'System Model', 'Forecast \u00B1 CI',
                             'Model-Forecast Deviation'])
@@ -368,3 +367,6 @@ class Plotter(QtWidgets.QApplication):
             color='green',
             linestyle=':',
             )
+
+    def plot_model_actual_deviation(self):
+        pass
