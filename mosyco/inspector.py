@@ -90,7 +90,7 @@ class Inspector:
                 if date.month == 12 and date.day == 31:
                     period = pd.Period(next_year)
 
-                    if date.year == 2015:
+                    if date.year == 2005:
                         break
 
                     # generate forecasts for each system
