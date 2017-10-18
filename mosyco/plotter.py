@@ -390,7 +390,7 @@ class Plotter(QtWidgets.QApplication):
             ac,
             where=ac < ml_lower,
             interpolate=True,
-            alpha=0.2,
+            alpha=0.3,
             color='red',
             linestyle=':',
             )
@@ -402,7 +402,7 @@ class Plotter(QtWidgets.QApplication):
             ac,
             where=ac > ml_upper,
             interpolate=True,
-            alpha=0.2,
+            alpha=0.3,
             color='red',
             linestyle=':',
             )
