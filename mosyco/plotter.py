@@ -4,6 +4,7 @@ matplotlib.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import FigureCanvas
 import matplotlib.animation as animation
 from matplotlib.figure import Figure
+from matplotlib.gridspec import GridSpec
 
 from PyQt5 import QtCore, QtWidgets
 
@@ -51,6 +52,7 @@ class Plotter(QtWidgets.QApplication):
         self.deviation_count = 0
         self.artists = []
         self.paused = False
+        self.update_legend = False
         self.prepare_plot()
 
 
@@ -74,9 +76,10 @@ class Plotter(QtWidgets.QApplication):
 
         matplotlib.style.use('seaborn')
 
-        self.fig = Figure()
-        self.ax1 = self.fig.add_subplot(211)
-        self.ax2 = self.fig.add_subplot(212, sharex=self.ax1)
+        self.fig = Figure(tight_layout=True)
+        gs = GridSpec(3, 1, height_ratios=[1, 4, 4])
+        self.ax1 = self.fig.add_subplot(gs[1])
+        self.ax2 = self.fig.add_subplot(gs[2], sharex=self.ax1)
 
 
         self.ax1.set_title('System View')
@@ -86,8 +89,8 @@ class Plotter(QtWidgets.QApplication):
         self.ax2.set_ylabel('Units')
 
         # actual system lines
-        (self.acl1, ) = self.ax1.plot([], [], c='blue', ls='solid', lw=0.5)
-        (self.acl2, ) = self.ax2.plot([], [], c='blue', ls='solid', lw=0.5)
+        (self.acl1, ) = self.ax1.plot([], [], c='blue', ls='solid', lw=0.7)
+        (self.acl2, ) = self.ax2.plot([], [], c='blue', ls='solid', lw=0.7)
 
         self.fc_lines = deque(maxlen=4)
 
@@ -112,22 +115,25 @@ class Plotter(QtWidgets.QApplication):
         #                   + self.half_period_length * 4)
 
         # add the legends
-        legend1 = ([self.acl1, self.m_line1, self.model_error],
-            ['Live System', 'Model', 'Model Threshold'])
+        self.leg_dict = {
+            'Live System': self.acl1,
+            'Model': self.m_line1,
+            'Model Threshold': self.model_error,
+        }
+        l = (self.leg_dict.values(), self.leg_dict.keys())
 
-        legend2 = ([self.acl2, self.m_line2],
-            ['Live System', 'Model'])
 
         # self.ax2.legend(*legend_items, loc='center',
         #             bbox_to_anchor=(0.5, -0.6),)
-        self.ax1.legend(*legend1)
-        self.ax2.legend(*legend2)
+
+        self.legend = self.fig.legend(*l, loc='upper center',
+                                        ncol=3, mode='expand')
 
         # rotate tick labels for all subplots
-        self.fig.autofmt_xdate()
+        self.fig.autofmt_xdate(bottom=0.2)
 
         # tight_layout call should be at the end of this function
-        self.fig.set_tight_layout(True)
+        # self.fig.set_tight_layout(True)
 
         # prepare the canvas
         self.prepare_canvas()
@@ -158,7 +164,7 @@ class Plotter(QtWidgets.QApplication):
             rs_md.values,
             c='green',
             ls='solid',
-            lw=0.5,
+            lw=0.7,
             alpha=0.7,
             )
 
@@ -168,7 +174,7 @@ class Plotter(QtWidgets.QApplication):
             rs_md.values,
             c='green',
             ls='solid',
-            lw=0.5,
+            lw=0.7,
             alpha=0.7,
             )
 
@@ -177,7 +183,7 @@ class Plotter(QtWidgets.QApplication):
             rs_md.index,
             rs_md.values - self.args.threshold * rs_md.values,
             rs_md.values + self.args.threshold * rs_md.values,
-            alpha=0.1,
+            alpha=0.3,
             color='green',
             linestyle=':',
             )
@@ -187,7 +193,6 @@ class Plotter(QtWidgets.QApplication):
         self.canvas = FigureCanvas(self.fig)
         self.canvas.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
                                     QtWidgets.QSizePolicy.Expanding)
-
         self.canvas.updateGeometry()
 
         self.main_widget = QtWidgets.QWidget()
@@ -311,7 +316,7 @@ class Plotter(QtWidgets.QApplication):
             fc.index,
             fc['yhat_lower'],
             fc['yhat_upper'],
-            alpha=0.1,
+            alpha=0.2,
             color='orange',
             linestyle=':',
             )
@@ -325,7 +330,7 @@ class Plotter(QtWidgets.QApplication):
             where=rs_m.values < fc['yhat_lower'],
             interpolate=True,
             alpha=0.2,
-            color='red',
+            color='fuchsia',
             linestyle=':',
             )
 
@@ -337,7 +342,7 @@ class Plotter(QtWidgets.QApplication):
             where=rs_m.values > fc['yhat_upper'],
             interpolate=True,
             alpha=0.2,
-            color='red',
+            color='fuchsia',
             linestyle=':',
             )
 
@@ -353,13 +358,13 @@ class Plotter(QtWidgets.QApplication):
         self.fc_lines.append(fc_line)
         if len(self.fc_lines) is 1:
             # update legend
-             self.ax2.get_legend().remove()
-             self.ax2.legend([self.acl2, self.m_line2, (self.fc_lines[-1],
-                             self.fc_error), (self.dev_warn_above,
-                             self.dev_warn_below)],
-                             ['Live System', 'Model',
-                             'Forecast \u00B1 CI',
-                             'Model-Forecast Deviation'])
+            d = {'Forecast \u00B1 CI': (self.fc_lines[-1], self.fc_error), 'Model-Forecast Deviation': self.dev_warn_above}
+            self.leg_dict.update(d)
+            l = (self.leg_dict.values(), self.leg_dict.keys())
+
+            self.legend.remove()
+            self.legend = self.fig.legend(*l, loc='upper center',
+                                            ncol=3, mode='expand')
 
         return self.artists
 
@@ -376,6 +381,7 @@ class Plotter(QtWidgets.QApplication):
             self.actual_dev_below.remove()
             self.actual_dev_above.remove()
         except AttributeError:
+            self.update_legend = True
             pass
 
         self.actual_dev_below = self.ax1.fill_between(
@@ -400,9 +406,13 @@ class Plotter(QtWidgets.QApplication):
             color='red',
             linestyle=':',
             )
-        if len(self.data['Index']) is 1:
-            self.ax1.get_legend().remove()
-            self.ax1.legend([self.acl1, self.m_line1,
-                            self.model_error, self.actual_dev_below],
-                            ['Live System', 'Model',
-                            'Model Threshold', 'Model-System Deviation'])
+        # TODO: when to update
+        if self.update_legend:
+            self.update_legend = False
+            d = {'Model-System Deviation': self.actual_dev_below}
+            self.leg_dict.update(d)
+            l = (self.leg_dict.values(), self.leg_dict.keys())
+
+            self.legend.remove()
+            self.legend = self.fig.legend(*l, loc='upper center',
+                                            ncol=3, mode='expand')
