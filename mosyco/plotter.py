@@ -23,9 +23,29 @@ class Plotter(QtWidgets.QApplication):
     """The Plotter is responsible for animating the Mosyco data.
 
     Attributes:
+        args: Command Line Arguments
+        system_name: Name of the actual system
+        model_name: Model name
         inspector: Reference to the Inspector object
-        reader: Reference to the Reader object
+        reader: Reference to the Reader object (usually a Thread objectß)
         plotting_queue: Queue used for communicating with Inspector
+        model_data: DataFrame containing the model data
+        data: Dictionary to be filled and plotted
+        half_period_length: Period / 2
+        paused: Whether or not the plot is currently paused
+        update_legend: If legend needs to be updated
+        artists: list of animated artist items to be redrawn each frame
+        fig: Figure object
+        ax1: Top Axes object (System View)
+        ax2: Bottom Axes object (Forecast View)
+        fc_lines: Deque of forecast lines
+        leg_dict: Legend dictionary
+        legend: Legend object
+        ani: FuncAnimation responsible for the animation
+        rs_model: Resampled version of model data
+        canvas: FigureCanvas used for QT Backend
+        main_widget: QT Application Widget
+
     """
     def __init__(self, args, reader, inspector, plotting_queue):
         super().__init__([__package__])
@@ -33,7 +53,7 @@ class Plotter(QtWidgets.QApplication):
         # there is only one model & system in GUI mode
         self.system_name = args.systems[0]
         self.model_name = args.models[0]
-        self.reader_thread = reader
+        self.reader = reader
         self.inspector = inspector
         self.plotting_queue = plotting_queue
 
@@ -57,18 +77,19 @@ class Plotter(QtWidgets.QApplication):
 
 
     def run(self):
-        # Todo: Daemon?!
+        """Run the Plotter"""
         self.process = mp.Process(target=self._run_mosyco, daemon=True)
         self.process.start()
+
         # start gui
         self.main_widget.show()
         self.exec_()
 
 
     def _run_mosyco(self):
-        self.reader_thread.start()
+        """Start the Mosyco Prototype"""
+        self.reader.start()
         self.inspector.start()
-
 
 
     def prepare_plot(self):
@@ -76,6 +97,7 @@ class Plotter(QtWidgets.QApplication):
 
         matplotlib.style.use('seaborn')
 
+        # create figure and axes objects
         self.fig = Figure(tight_layout=True)
         gs = GridSpec(3, 1, height_ratios=[1, 4, 4])
         self.ax1 = self.fig.add_subplot(gs[1])
@@ -92,6 +114,7 @@ class Plotter(QtWidgets.QApplication):
         (self.acl1, ) = self.ax1.plot([], [], c='blue', ls='solid', lw=0.7)
         (self.acl2, ) = self.ax2.plot([], [], c='blue', ls='solid', lw=0.7)
 
+        # object to
         self.fc_lines = deque(maxlen=4)
 
         # plot model w/ standard confidence interval
@@ -121,19 +144,11 @@ class Plotter(QtWidgets.QApplication):
             'Model Threshold': self.model_error,
         }
         l = (self.leg_dict.values(), self.leg_dict.keys())
-
-
-        # self.ax2.legend(*legend_items, loc='center',
-        #             bbox_to_anchor=(0.5, -0.6),)
-
         self.legend = self.fig.legend(*l, loc='upper center',
                                         ncol=3, mode='expand')
 
         # rotate tick labels for all subplots
         self.fig.autofmt_xdate(bottom=0.2)
-
-        # tight_layout call should be at the end of this function
-        # self.fig.set_tight_layout(True)
 
         # prepare the canvas
         self.prepare_canvas()
@@ -217,7 +232,7 @@ class Plotter(QtWidgets.QApplication):
 
 
     def get_data(self):
-        """Receive data from the inspector."""
+        """Receive data from the inspector and yield to self.update."""
         while True:
             while self.paused:
                 yield None
@@ -225,7 +240,7 @@ class Plotter(QtWidgets.QApplication):
             new_data = []
             fc = None
 
-            while len(new_data) < 3:
+            while len(new_data) < 4:
                 try:
                     obj = self.plotting_queue.get_nowait()
                 except Empty:
@@ -275,10 +290,9 @@ class Plotter(QtWidgets.QApplication):
         self.resampled_actual = pd.Series(index=self.data['Index'],
                     data=self.data[self.system_name]).resample('W').mean().iloc[:-1]
 
+        # set the new acutal data
         self.acl1.set_data(self.resampled_actual.index, self.resampled_actual.values)
         self.acl2.set_data(self.resampled_actual.index, self.resampled_actual.values)
-
-
 
         # get current upper bound of date axis
         ax1_right_lim = matplotlib.dates.num2date(self.ax1.get_xlim()[1])
@@ -307,8 +321,9 @@ class Plotter(QtWidgets.QApplication):
 
 
     def plot_forecast(self, fc):
-        """Draw a new forecast. Called whenever a new one is available."""
+        """Draw a new forecast."""
 
+        # get resampled model data for forecast period
         rs_m = self.rs_model.loc[fc.index, self.model_name]
 
         # draw forecast confidence interval
@@ -346,7 +361,7 @@ class Plotter(QtWidgets.QApplication):
             linestyle=':',
             )
 
-
+        # draw forecast line
         (fc_line, ) = self.ax2.plot(
                 fc.index,
                 fc['yhat'],
@@ -355,9 +370,11 @@ class Plotter(QtWidgets.QApplication):
                 lw=0.5,
                 alpha=0.4,
                 )
+
         self.fc_lines.append(fc_line)
+
         if len(self.fc_lines) is 1:
-            # update legend
+            # update legend the first time a forecast is drawn
             d = {'Forecast \u00B1 CI': (self.fc_lines[-1], self.fc_error), 'Model-Forecast Deviation': self.dev_warn_above}
             self.leg_dict.update(d)
             l = (self.leg_dict.values(), self.leg_dict.keys())
@@ -368,8 +385,11 @@ class Plotter(QtWidgets.QApplication):
 
         return self.artists
 
+
     def plot_model_actual_deviation(self):
-        # draw deviation between model and actual lines
+        """Draw the deviation between the model and the actual system."""
+
+        # get resmapled index & upper/lower bounds of model line
         idx = self.resampled_actual.index
         ml_upper = self.rs_model.loc[idx, 'upper_bound']
         ml_lower = self.rs_model.loc[idx, 'lower_bound']
@@ -384,6 +404,7 @@ class Plotter(QtWidgets.QApplication):
             self.update_legend = True
             pass
 
+        # draw deviations below
         self.actual_dev_below = self.ax1.fill_between(
             idx,
             ml_lower,
@@ -395,7 +416,7 @@ class Plotter(QtWidgets.QApplication):
             linestyle=':',
             )
 
-        # above
+        # and above
         self.actual_dev_above = self.ax1.fill_between(
             idx,
             ml_upper,
@@ -406,7 +427,8 @@ class Plotter(QtWidgets.QApplication):
             color='red',
             linestyle=':',
             )
-        # TODO: when to update
+
+        # update the legend when necessary
         if self.update_legend:
             self.update_legend = False
             d = {'Model-System Deviation': self.actual_dev_below}
