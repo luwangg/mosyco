@@ -57,13 +57,13 @@ def parse_arguments():
             action="store_true")
 
     # Data columns
-    parser.add_argument("-m", "--models",
-            help="A list of the model data columns. e.g. --models 'PAmodel1' 'PAmodel2'",
-            nargs='+', default=model_list)
-
     parser.add_argument("-s", "--systems",
             help="A list of the actual system data columns. e.g. --systems 'PAseasonal' 'PAtrend'",
             nargs='+', default=system_list)
+
+    parser.add_argument("-m", "--models",
+            help="A list of the model data columns. e.g. --models 'PAmodel1' 'PAmodel2'",
+            nargs='+', default=model_list)
 
     # Threshold value
     parser.add_argument("-t", "--threshold",
@@ -87,6 +87,10 @@ def parse_arguments():
     if args.gui and (len(args.systems) > 1):
         print(" GUI-mode is only available for a single system and model.")
         sys.exit()
+
+    if not len(args.systems) == len(args.models) and len(args.models) > 1:
+        print(" Matching number of systems/models required for multi-model calls.")
+
 
     if args.quiet:
         args.loglevel = logging.CRITICAL

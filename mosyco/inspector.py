@@ -4,7 +4,6 @@ import pandas as pd
 import logging
 import time
 
-from threading import Thread
 from fbprophet import Prophet
 
 import mosyco.methods as methods
@@ -44,11 +43,9 @@ class Inspector:
             index (Index or DateTimeIndex): of the corresponding reader's dataframe.
             model_columns (Series): list of model data columns, passed from reader in batch.
         """
-        # TODO: make this a list as well and use all models !!!
-        self.model_name = model_columns.columns[0]
         self.args = args
+        self.model_map = dict(zip(self.args.systems, self.args.models))
 
-        # self.df = pd.DataFrame(data=model_columns.copy(), index=index)
         self.df = pd.DataFrame(data=model_columns.copy(), index=index)
         for s in self.args.systems:
             self.df[s] = np.nan
@@ -76,13 +73,10 @@ class Inspector:
                 values = row
                 date = values['Index']
 
+                # evaluate system vs model
                 for system_name, val in values.items():
-                    if system_name is 'Index':
-                        continue
-                    (exceeds_threshold, _) = self.eval_actual(date, system_name)
-                    # TODO: how to output threshold deviations
-                    log.debug(f'Date: {date.date()} ' + \
-                        f'- Model-Actual deviation for system: {system_name}')
+                    if system_name is not 'Index':
+                        self.eval_actual(date, system_name)
 
                 next_year = date.year + 1
 
@@ -96,11 +90,9 @@ class Inspector:
                     # generate forecasts for each system
                     for system in self.args.systems:
                         log.info(f'Generating {system} forecast for {period}...')
-
-                        # TODO: do something with prediction result? plot
                         self.predict(period, system)
 
-
+                # if in GUI-Mode, push forecast to plotter
                 if self.args.gui:
                     self.plotting_queue.put(row)
 
@@ -122,13 +114,14 @@ class Inspector:
                     log.debug('The queue is empty. The Inspector has finished.')
                     return
 
-                # prevent weird pandas error "setting an array element with a sequence"
+                # prevent pandas error "setting an array element with a sequence"
                 if len(new_row) == 2:
                     self.df.loc[new_row.Index, self.args.systems] = new_row[1:][0]
                 else:
                     self.df.loc[new_row.Index, self.args.systems] = new_row[1:]
 
                 yield new_row._asdict()
+
             except Exception as e:
                 log.debug('Exception in mosyco.inspector.receive: {}'.format(e))
                 time.sleep(0.05)
@@ -149,7 +142,7 @@ class Inspector:
 
         # get the values
         actual = self.df.loc[date, system]
-        model = self.df.loc[date, self.model_name]
+        model = self.df.loc[date, self.model_map[system]]
 
         # sanity check
         assert not pd.isnull(actual)
@@ -160,16 +153,18 @@ class Inspector:
         (exceeds_threshold, deviation) = result
 
         if exceeds_threshold:
-            log.debug(f'Model-actual deviation on {date} by {deviation}')
+            log.debug(f'Date: {date.date()} - Model-Actual deviation for'
+                    f' system: {system} '
+                    f'by {deviation:.2%}.')
 
         return result
 
     def predict(self, period, system):
         self.forecast_period(period, system)
-        res = self.eval_future(period)
+        res = self.eval_future(period, system)
         return res
 
-    def eval_future(self, period):
+    def eval_future(self, period, system):
         """Evaluate the deviation between Model and Forecast data for a period.
 
         Outputs the first date of any deviation in the logs and returns a
@@ -211,7 +206,7 @@ class Inspector:
         except KeyError as e:
             raise KeyError(f"Forecasting data for {period} not available.")
 
-        model_data = data.loc[:, self.model_name]
+        model_data = data.loc[:, self.model_map[system]]
         yhat_lower = data.loc[:, 'yhat_lower']
         yhat_upper = data.loc[:, 'yhat_upper']
 
