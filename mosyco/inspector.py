@@ -61,36 +61,42 @@ class Inspector:
 
         self.threshold = self.args.threshold
         # \u00B1 is unicode for hte plus-minus character
-        log.info(f"Using threshold: \u00B1{self.threshold:.2%}")
+        log.debug(f"Using threshold: \u00B1{self.threshold:.2%}")
 
     def start(self):
+        """Start the Inspector."""
         # silence suppresses stdout (to deal with pystan bug)
         log.info("Starting Inspector...")
         with helpers.silence():
             for row in self.receive():
                 # sanity check
                 assert len(self.args.systems) == len(row) - 1
-                values = row
-                date = values['Index']
 
-                # evaluate system vs model
-                for system_name, val in values.items():
+                # get date
+                date = row['Index']
+
+                # evaluate system vs model for each system
+                for system_name, val in row.items():
                     if system_name is not 'Index':
                         self.eval_actual(date, system_name)
 
-                next_year = date.year + 1
-
                 # at the end of each period, create a forecast for the following
                 if date.month == 12 and date.day == 31:
-                    period = pd.Period(next_year)
+                    # create a period for the following year
+                    period = pd.Period(date.year + 1)
 
+                    # stop at this date
                     if date.year == 2005:
                         break
 
-                    # generate forecasts for each system
+                    # generate a forecasts for each system and evaluate it
+                    # against the model data
                     for system in self.args.systems:
-                        log.info(f'Generating {system} forecast for {period}...')
-                        self.predict(period, system)
+                        log.debug(f'Generating {system} forecast for {period}...')
+                        self.forecast_period(period, system)
+                        log.debug(f'{system} forecast was generated for {period}.')
+                        log.debug(f'Evaluating {system} forecast for {period}...')
+                        self.eval_future(period, system)
 
                 # if in GUI-Mode, push forecast to plotter
                 if self.args.gui:
@@ -100,18 +106,19 @@ class Inspector:
 
 
     def receive(self):
-        """Fills inspector dataframe with actual values from running systems.
+        """Receive data from the Reader.
 
-        This is a generator function that will retrieve actual system values from
-        the mosyco queue until it retrieves a None value. The retrieved data is
-        yielded for further analysis and plotting.
+        While the Reader pushes new data rows to the reader_queue in a loop,
+        the Inspector receives this data and yields it row by row to the
+        Inspector's start method for evaluation.
         """
         while True:
             try:
                 new_row = self.reader_queue.get(block=True)
 
+                # Signal that reader has finished pushing data
                 if new_row is None:
-                    log.debug('The queue is empty. The Inspector has finished.')
+                    log.debug('The queue is empty. Shutting down Inspector...')
                     return
 
                 # prevent pandas error "setting an array element with a sequence"
@@ -130,13 +137,15 @@ class Inspector:
 
 
     def eval_actual(self, date, system):
-        """Evaluate the deviation between model- and actual data for given date.
-        Return the deviation if it exceeds a threshold or False if not.
+        """Evaluate the deviation between model- and actual data for a given date.
+
+        A log output will be sent for every deviation that this method detects.
 
         Args:
             date (TimeStamp): Date for which to evaluate.
             system (str): Name of the actual system.
         """
+
         # assertion will fail if the values are not available yet
         assert system in self.df.columns
 
@@ -157,10 +166,6 @@ class Inspector:
                     f'system: {system} '
                     f'on {date.date()} '
                     f'by {deviation:.2%}.')
-
-    def predict(self, period, system):
-        self.forecast_period(period, system)
-        self.eval_future(period, system)
 
     def eval_future(self, period, system):
         """Evaluate the deviation between Model and Forecast data for a period.
@@ -227,16 +232,16 @@ class Inspector:
 
 
         f_fit = 1.0 - (outside.count() / outside.size)
-        log.info(f'Model-forecast fit: {f_fit:.1%}')
+        log.debug(f'Finished evaluating {system} forecast: '
+            f'Model-Forecast fit: {f_fit:.2%}')
 
         # plot the forecast if in GUI-Mode
         if self.args.gui:
-            # TODO: what does plotter really need?
             fc = data[['yhat', 'yhat_upper', 'yhat_lower']].resample('W').mean()
             self.plotting_queue.put(fc)
-            # time.sleep(1)
 
-    def forecast_period(self, period, actual_system):
+
+    def forecast_period(self, period, actual_system, fc_model):
         """Update forecast dataframe attribute with forecast for the given period.
 
         A period can be any pandas period object or period-like string.
@@ -248,15 +253,16 @@ class Inspector:
 
         Prophet works best with at least one year of historical data, so the default
         is to wait until enough data is available and then periodcally update the
-        prediction when enough new data has arrived.
+        prediction when enough new data has arrived. This also means that in
+        certain circumstances, the first forecast may not be very accurate.
 
         A good introduction to how fbprophet works can be found in their blog post
         `here <https://research.fb.com/prophet-forecasting-at-scale/>`_. Further
         reading can be found in the \
         `paper <https://facebookincubator.github.io/prophet/static/prophet_paper_20170113.pdf>
 
-        The fitting takes a bit of time so it should not be done too frequently
-        or else the overall performance of the application will suffer.
+        The fitting is computationally intensive and should therefore not be done
+        too frequently or else the overall performance of the application will suffer.
 
         Procedure:
             1. Create an empty dataframe for the required period
@@ -264,17 +270,15 @@ class Inspector:
             3. Merge the prediction output into the forecast dataframe
 
         """
-        # TODO: allow to set period to use for forecast.
-
         # EXPENSIVE - CAN TAKE VERY LONG
-        self._fit_model(actual_system)
+        fc_model = self._fit_model(actual_system)
 
         # double check / assert here that period is in df
         assert 'ds' in self.df.columns
         fc_frame = self.df.loc[period.start_time:period.end_time, ['ds']]
 
         # EXPENSIVE - CAN TAKE VERY LONG
-        new_forecast = self.forecasting_model.predict(fc_frame)
+        new_forecast = fc_model.predict(fc_frame)
 
         # new_forecast needs to have DateTimeIndex
         new_forecast.set_index('ds', inplace=True)
@@ -283,28 +287,25 @@ class Inspector:
         self.forecast = self.forecast.combine_first(new_forecast)
 
     def _fit_model(self, system):
-        """Fit the model.
+        """Fit and return a new forecasting model.
 
-        This is a very expensive operation. It creates a new Prophet object each
+        This is also an expensive operation. It creates a new Prophet object each
         time this function is called. The fitting can take up to 5 seconds on
         occasion but should generally be quite fast, thanks to
         `PyStan <https://pystan.readthedocs.io/en/latest/>`_.
 
         This is the bottleneck that restricts the real-time capability of this
-        program. This implementation is therefore not suitable for use cases
-        that require new forecasts every few seconds or so. However, it works very
-        well for frequencies of once per minute or lower.
+        prototype. This implementation is not suitable for use cases
+        that require new forecasts every few seconds or so. However, it does work
+        very well for frequencies of once per minute or less.
         """
         # We need to set 'y' column again each time because the actual value
         # column receives new values in the meantime.
-        # TODO: maybe just call actual data y in dataframe (refactor)
-        # But then --> Problem with multiple variables
         try:
             self.df['y'] = self.df[system]
         except AttributeError as e:
             raise AttributeError("inspector does not have actual {system} data \
                                     for forecast yet.")
 
-        # No custom settings for model, b/c we are predicting what we already
-        # know anyways
-        self.forecasting_model = Prophet().fit(self.df[['ds', 'y']])
+        # No custom settings for model --> forecast is just for illustration
+        return Prophet().fit(self.df[['ds', 'y']])

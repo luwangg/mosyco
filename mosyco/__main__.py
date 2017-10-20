@@ -45,8 +45,6 @@ class Mosyco():
         if self.args.gui:
             self.plotter = Plotter(self.args, self.reader, self.inspector, plotting_queue)
 
-        self.deviation_count = 0
-
     def run(self):
         """Start and run the Mosyco system."""
 
@@ -70,5 +68,3 @@ log.debug('Running in DEBUG Mode')
 # Run Mosyco
 app = Mosyco(args)
 app.run()
-
-log.debug(f'Total: {app.deviation_count} model-actual deviations detected.')

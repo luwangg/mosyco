@@ -1,2 +1,0 @@
-include *.txt README.rst LICENSE
-recursive-include docs *.txt

@@ -5,17 +5,16 @@ deviations between actual and simulated values.
 
 These deviations are later used in analysis to determine if the simulation
 should be adjusted.
+
+This module should be extended.
 """
 
-
-# TODO: Docstrings
-
-
 def absolute_deviation(simulated, observed, threshold):
+    """Return the absolute deviation of a simulated value from an observed value."""
     return abs(simulated - observed) > threshold
 
 def relative_deviation(simulated, observed, threshold):
-    # TODO: try except ZeroDivisionError handle properly
+    """Return the relative deviation of a simulated value from an observed value."""
     try:
         1 / observed
     except ZeroDivisionError:

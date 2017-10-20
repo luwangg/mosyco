@@ -163,6 +163,8 @@ class Plotter(QtWidgets.QApplication):
             )
 
     def plot_model(self):
+        """Plot the static model data."""
+
         # add upper and lower bounds w/ standard threshold
         # TODO: make variable threshold possible
         md = self.model_data[self.model_name]

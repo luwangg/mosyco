@@ -10,8 +10,7 @@ import pandas as pd
 
 def load_dataframe():
     """Load the dataset into memory."""
-    # TODO: proper naming conventions for columns
-    df = pd.read_csv(os.path.join('data/productA-data.csv'),
+    df = pd.read_csv(os.path.join('data/sample_data.csv'),
                                     index_col=1, parse_dates=True,
                                     infer_datetime_format=True)
     # sanitize dataframe
