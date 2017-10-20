@@ -149,20 +149,18 @@ class Inspector:
         assert not pd.isnull(model)
 
         # calculate the deviation
-        result = methods.relative_deviation(model, actual, self.threshold)
-        (exceeds_threshold, deviation) = result
+        rs = methods.relative_deviation(model, actual, self.threshold)
+        (exceeds_threshold, deviation) = rs
 
         if exceeds_threshold:
-            log.debug(f'Date: {date.date()} - Model-Actual deviation for'
-                    f' system: {system} '
+            log.debug(f'Model-Actual deviation for '
+                    f'system: {system} '
+                    f'on {date.date()} '
                     f'by {deviation:.2%}.')
-
-        return result
 
     def predict(self, period, system):
         self.forecast_period(period, system)
-        res = self.eval_future(period, system)
-        return res
+        self.eval_future(period, system)
 
     def eval_future(self, period, system):
         """Evaluate the deviation between Model and Forecast data for a period.
@@ -210,32 +208,25 @@ class Inspector:
         yhat_lower = data.loc[:, 'yhat_lower']
         yhat_upper = data.loc[:, 'yhat_upper']
 
-        # TODO: rename eval...
-        data['eval'] = model_data.where(
-            (yhat_lower <= model_data) & (model_data <= yhat_upper)
-        )
+        forecast_data = data.loc[:, 'yhat']
+        deviations = (model_data - forecast_data) / forecast_data
 
-        # the above column now contains values where model data fell within the
-        # prediction confidence interval and NaNs otherwise
+        # find out where model data falls outside forecast CI
+        outside = model_data.where(
+            (model_data < yhat_lower) | (model_data > yhat_upper))
 
-        # get a copy of the column to return later
-        result = data.loc[:, 'eval'].copy()
 
-        # keep only rows were the model falls outside the confidence interval
-        # TODO: necessary???
-        model_errors = result[np.isnan(result)]
-        # check if any deviations
-        if model_errors.empty:
-            log.info(f'No forecast-model deviations found during {period}')
-            return None
+        outside_deviations = deviations.loc[outside.index]
 
-        # get first day when the model is not within forecast bounds
-        first_date = model_errors.index[0]
+        if self.args.loglevel == logging.DEBUG:
+            for date, deviation in outside_deviations.iteritems():
+                log.debug(f'Model-Forecast deviation for '
+                        f'model: {self.model_map[system]} '
+                        f'on {date.date()} '
+                        f'by {deviation:.2%}.')
 
-        # TODO: need to determine how best to output this
-        log.info(f'Potential forecast-model deviation from {first_date.date()}')
 
-        f_fit = result.count() / result.size
+        f_fit = 1.0 - (outside.count() / outside.size)
         log.info(f'Model-forecast fit: {f_fit:.1%}')
 
         # plot the forecast if in GUI-Mode
@@ -243,7 +234,7 @@ class Inspector:
             # TODO: what does plotter really need?
             fc = data[['yhat', 'yhat_upper', 'yhat_lower']].resample('W').mean()
             self.plotting_queue.put(fc)
-            time.sleep(1)
+            # time.sleep(1)
 
     def forecast_period(self, period, actual_system):
         """Update forecast dataframe attribute with forecast for the given period.
@@ -278,14 +269,12 @@ class Inspector:
         # EXPENSIVE - CAN TAKE VERY LONG
         self._fit_model(actual_system)
 
-        # TODO: entries for period MUST be empty, else this will raise an exception?!
         # double check / assert here that period is in df
         assert 'ds' in self.df.columns
         fc_frame = self.df.loc[period.start_time:period.end_time, ['ds']]
 
         # EXPENSIVE - CAN TAKE VERY LONG
         new_forecast = self.forecasting_model.predict(fc_frame)
-
 
         # new_forecast needs to have DateTimeIndex
         new_forecast.set_index('ds', inplace=True)
