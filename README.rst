@@ -9,7 +9,7 @@ Installation:
 
 This application requires Python 3.6 or higher!
 
-The easiste way to install this may be to download the latest version
+The easiest way to install this may be to download the latest version
 of Anaconda_. It comes with most of the necessary dependencies.
 
 It is recommended to use a virtualenv or conda environment if there are muliple
@@ -24,7 +24,7 @@ After installing Python:
 
 2. Setup a virtual environment
 
-3. Install the required dependencies (takes a while)::
+3. Install the required dependencies (may take a while)::
 
     pip install -r requirements.txt
 
