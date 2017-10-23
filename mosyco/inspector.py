@@ -241,7 +241,7 @@ class Inspector:
             self.plotting_queue.put(fc)
 
 
-    def forecast_period(self, period, actual_system, fc_model):
+    def forecast_period(self, period, actual_system):
         """Update forecast dataframe attribute with forecast for the given period.
 
         A period can be any pandas period object or period-like string.
