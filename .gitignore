@@ -1,7 +1,7 @@
 ignored-by-git/
 
 dist/
-
+build/
 .cache/
 
 __pycache__/
