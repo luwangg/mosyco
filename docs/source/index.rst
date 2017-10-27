@@ -46,13 +46,13 @@ The architecture introduces several interconnected components. The components th
 - The *system under observation* provides a stream of actual system data to the observer.
 - The *observer* monitors the running system for deviations from the model and alerts the Model-Controller if such deviations exceed some (possibly dynamic) threshold.
 - The *model-controller* makes structural or parametric changes to the model in order to reflect changes in the running systems environment.
-- The *model* allows planning for some business purpose
+- The *model* allows planning for some business purpose. It is based on expert- and/or domain-knowledge.
 
 
 
 
-Detailed Information about the prototype can be found here: :ref:`prototype`.
-Information on how to install and test the prototype can be found here in its Readme: :ref:`readme`.
+Detailed Information about the prototype can be found here: :ref:`prototype`. Information on how to install and test the prototype can be found here in its Readme: :ref:`readme`. For an in-depth description of the prototype's components and how they work together, see the accompanying paper.
+
 
 
 Indices and tables

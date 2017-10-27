@@ -61,7 +61,7 @@ class Inspector:
 
         self.threshold = self.args.threshold
         # \u00B1 is unicode for hte plus-minus character
-        log.debug(f"Using threshold: \u00B1{self.threshold:.2%}")
+        log.debug(f"Using threshold: \u00B1{self.threshold:.1%}")
 
     def start(self):
         """Start the Inspector."""
