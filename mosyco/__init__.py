@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+"""
+This package contains the mosyco prototype.
+"""
+
+__all__ = ['reader', 'inspector', 'plotter', 'helpers', 'methods', 'parser']
+
 import multiprocessing as mp
 from queue import Queue
 

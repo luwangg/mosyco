@@ -1,10 +1,8 @@
 .. _prototype:
 
+********************
 The Mosyco Prototype
-====================
-
-Overview
---------
+********************
 
 The mosyco prototype implements the observing part of the Model-/System-Controller architecture. It monitors the running system and evaluates the model performance in real-time. It outputs deviation logs and offers an optional dashboard view of live model performance.
 
@@ -12,9 +10,8 @@ The mosyco prototype implements the observing part of the Model-/System-Controll
 Mosyco is capable of processing multiple live systems against multiple models. In GUI-Mode, however, the program is restricted to one single model and one single live system for performance reasons. If both GUI-Mode and multiple system/model columns are supplied as command line options, the GUI-option takes precedence and the program will only use the first model and the first system for that invocation.
 
 
-
 Components
-----------
+==========
 
 The core functionality of the program is controlled by the following modules:
 
@@ -36,6 +33,6 @@ Plotter
 
 
 Summary
--------
+=======
 
 When the program is started, it immediately loads the model data into memory. The names of the columns containing the model data can be specified as command line options. The reader then begins pushing system data to inspector, which stores and analyses it. Deviations between model and system or model and forecasts are logged either directly to console or to a logfile, depending on the configuration. If GUI-Mode is enabled, a live plot visualizes the progress of the inspector. Once the reader has run out of data to push to the inspector, the program terminates.

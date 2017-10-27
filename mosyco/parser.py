@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+"""This module is responsible for parsing the command line arguments."""
+
 import argparse
 import logging
 import sys

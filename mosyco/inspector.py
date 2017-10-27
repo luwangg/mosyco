@@ -259,7 +259,7 @@ class Inspector:
         A good introduction to how fbprophet works can be found in their blog post
         `here <https://research.fb.com/prophet-forecasting-at-scale/>`_. Further
         reading can be found in the \
-        `paper <https://facebookincubator.github.io/prophet/static/prophet_paper_20170113.pdf>
+        `paper <https://facebookincubator.github.io/prophet/static/prophet_paper_20170113.pdf>`_
 
         The fitting is computationally intensive and should therefore not be done
         too frequently or else the overall performance of the application will suffer.

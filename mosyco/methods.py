@@ -6,7 +6,7 @@ deviations between actual and simulated values.
 These deviations are later used in analysis to determine if the simulation
 should be adjusted.
 
-This module should be extended.
+This module may be extended.
 """
 
 def absolute_deviation(simulated, observed, threshold):

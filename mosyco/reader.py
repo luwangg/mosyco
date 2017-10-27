@@ -26,7 +26,7 @@ class Reader(threading.Thread):
         """Return a new Reader object.
 
         Args:
-            sources (str): list of column names for actual value data
+            sources (list): list of column name strings for actual value data
         """
         # For now we pretend that these values come from a system:
         super().__init__(daemon=True)

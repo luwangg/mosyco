@@ -1,12 +1,13 @@
+*****************
 The Mosyco Readme
-====================
+*****************
 
 The mosyco prototype implements the observing part of the Model-/System-Controller architecture. It monitors the running system and evaluates the model performance in real-time. It outputs deviation logs and offers an optional dashboard view of live model performance.
 
 .. _installation:
 
 Installation
--------------
+============
 
 This application requires Python 3.6 or higher!
 
@@ -31,7 +32,7 @@ After installing Python:
 
 
 Dependencies
-------------
+============
 
 Mosyco depends on numpy, pandas, dateutil and seaborn. Running in GUI-Mode (in order to view the live dashboard) also requires PyQt5 and matplotlib. Consult the the :download:`requirements file <../../requirements.txt>` to find the exact version numbers for each of the dependencies.
 
@@ -39,10 +40,10 @@ Mosyco depends on numpy, pandas, dateutil and seaborn. Running in GUI-Mode (in o
 .. _usage:
 
 Usage
------
+=====
 
-Summary
-^^^^^^^
+Usage Summary
+-------------
 
 ::
 
@@ -51,7 +52,7 @@ Summary
 
 
 Options
-^^^^^^^
+-------
 
 ====================================   ================================================
 Option                                 Explanation
@@ -70,7 +71,7 @@ Option                                 Explanation
 
 
 Examples
-^^^^^^^^
+--------
 
 All of these commands should be run from the root mosyco directory.
 
@@ -94,7 +95,7 @@ NOTE: GUI-Mode requires PyQt5. While in GUI-Mode, you can press SPACE in order
 to pause/unpause the animation and ESC to quit.
 
 Useful Links
-^^^^^^^^^^^^
+------------
 
 `Link to the data preparation notebook. <dataprep>`_
 
