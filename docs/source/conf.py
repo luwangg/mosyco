@@ -116,9 +116,10 @@ htmlhelp_basename = 'Mosycodoc'
 # -- Options for LaTeX output ---------------------------------------------
 
 latex_elements = {
+    # 'classoptions': ',openany,oneside',
     # The paper size ('letterpaper' or 'a4paper').
     #
-    # 'papersize': 'letterpaper',
+    'papersize': 'a4paper',
 
     # The font size ('10pt', '11pt' or '12pt').
     #
