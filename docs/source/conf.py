@@ -40,7 +40,8 @@ extensions = ['sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
     'sphinx.ext.napoleon',
-    'sphinxcontrib.fulltoc',]
+    'sphinxcontrib.fulltoc',
+    ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -116,18 +117,24 @@ htmlhelp_basename = 'Mosycodoc'
 # -- Options for LaTeX output ---------------------------------------------
 
 latex_elements = {
-    # 'classoptions': ',openany,oneside',
+    # Remove blank pages
+    'classoptions': ',oneside',
+
     # The paper size ('letterpaper' or 'a4paper').
     #
     'papersize': 'a4paper',
 
     # The font size ('10pt', '11pt' or '12pt').
     #
-    # 'pointsize': '10pt',
+    'pointsize': '12pt',
 
     # Additional stuff for the LaTeX preamble.
     #
-    # 'preamble': '',
+    'preamble': r'''
+    \setlength{\headheight}{15pt}
+    \setcounter{tocdepth}{2}
+    \fvset{fontsize=auto}
+    ''',
 
     # Latex figure (float) alignment
     #
@@ -141,6 +148,9 @@ latex_documents = [
     (master_doc, 'Mosyco.tex', 'Mosyco Documentation',
      'vab9', 'manual'),
 ]
+
+latex_show_pagerefs = True
+
 
 
 # -- Options for manual page output ---------------------------------------

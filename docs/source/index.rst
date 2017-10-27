@@ -11,18 +11,20 @@ Mosyco Documentation
 
 Welcome to Mosyco's documentation! The following pages outline the first prototype of a Model-/System-Controller architecture as conceived by Breuer [1]_. It is an academic project in the domain of Information Systems, exploring how *self-correcting* models might change model-based business planning.
 
+The project is part of a master's thesis in Information Systems at the `University of Osnabrück <https://www.uni-osnabrueck.de/en/home.html>`_
+
 
 Contents
 ========
 
 .. toctree::
-   :numbered:
+   :maxdepth: 2
    :name: mastertoc
 
    intro
    prototype
    Readme <readme>
-   API Reference <modules>
+   API Reference <mosyco>
    Data Preparation Link <https://vab9.github.io/observer/data-prep.html>
 
 
