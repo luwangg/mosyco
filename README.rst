@@ -34,7 +34,7 @@ After installing Python:
 Dependencies
 ============
 
-Mosyco depends on numpy, pandas, dateutil and seaborn. Running in GUI-Mode (in order to view the live dashboard) also requires PyQt5 and matplotlib. Consult the the :download:`requirements file <../../requirements.txt>` to find the exact version numbers for each of the dependencies.
+Mosyco depends on numpy, pandas, dateutil and seaborn. Running in GUI-Mode (in order to view the live dashboard) also requires PyQt5 and matplotlib. Consult the the 'requirements.txt' file to find the exact version numbers for each of the dependencies.
 
 
 .. _usage:
