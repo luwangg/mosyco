@@ -62,8 +62,7 @@ Option                                 Explanation
 -q, --quiet                            Silence output: suppress any console or log output
 -s, --systems SYSTEMS [SYSTEMS ...]    List of the actual system data columns. e.g. --systems 'PAseasonal' 'PAtrend'
 -m, --models MODELS [MODELS ...]       List of the model data columns. e.g. -models 'PAmodel1' 'PAmodel2'
---threshold THRESHOLD                  The initial threshold used for the gap analysis
--t threshold                           Short form of --threshold
+-t, --threshold THRESHOLD              The initial threshold used for the gap analysis
 --gui                                  GUI-mode: show live updating plots. This will only work if for single model and system values.
 --logfile                              Log to a file called 'mosyco.log'
 ====================================   ================================================
