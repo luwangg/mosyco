@@ -96,8 +96,7 @@ to pause/unpause the animation and ESC to quit.
 Useful Links
 ------------
 
-`Link to the data preparation notebook. <dataprep>`_
+`Link to the data preparation notebook. <https://vab9.github.io/observer>`_
 
-.. _dataprep: https://vab9.github.io/observer
 .. _Anaconda: https://www.continuum.io/downloads
 .. _`virtual environment`: https://packaging.python.org/tutorials/installing-packages/#creating-virtual-environments
