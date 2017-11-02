@@ -98,6 +98,6 @@ Useful Links
 
 `Link to the data preparation notebook. <dataprep>`_
 
-.. _dataprep: https://vab9.github.io/observer/
+.. _dataprep: https://vab9.github.io/observer
 .. _Anaconda: https://www.continuum.io/downloads
 .. _`virtual environment`: https://packaging.python.org/tutorials/installing-packages/#creating-virtual-environments
