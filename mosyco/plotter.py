@@ -19,6 +19,11 @@ from collections import defaultdict, deque
 
 log = logging.getLogger(__name__)
 
+def run_mosyco(reader, inspector):
+    """Start the Mosyco Prototype"""
+    reader.start()
+    inspector.start()
+
 class Plotter(QtWidgets.QApplication):
     """The Plotter is responsible for animating the Mosyco data.
 
@@ -78,18 +83,12 @@ class Plotter(QtWidgets.QApplication):
 
     def run(self):
         """Run the Plotter"""
-        self.process = mp.Process(target=self._run_mosyco, daemon=True)
+        self.process = mp.Process(target=run_mosyco, args=(self.reader, self.inspector), daemon=True)
         self.process.start()
 
         # start gui
         self.main_widget.show()
         self.exec_()
-
-
-    def _run_mosyco(self):
-        """Start the Mosyco Prototype"""
-        self.reader.start()
-        self.inspector.start()
 
 
     def prepare_plot(self):
@@ -198,6 +197,8 @@ class Plotter(QtWidgets.QApplication):
         # plot the model threshold
         self.model_error = self.ax1.fill_between(
             rs_md.index,
+            # rs_md.values - self.args.threshold * rs_md.values,
+            # rs_md.values + self.args.threshold * rs_md.values,
             rs_md.values - self.args.threshold * rs_md.values,
             rs_md.values + self.args.threshold * rs_md.values,
             alpha=0.3,
