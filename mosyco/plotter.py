@@ -11,16 +11,28 @@ from PyQt5 import QtCore, QtWidgets
 import logging
 import pandas as pd
 from dateutil.relativedelta import relativedelta
+
+from queue import Empty, Queue
 import multiprocessing as mp
-from queue import Empty
 
 from functools import partial
 from collections import defaultdict, deque
 
+from mosyco.reader import Reader
+from mosyco.inspector import Inspector
+import mosyco.helpers as helpers
+
 log = logging.getLogger(__name__)
 
-def run_mosyco(reader, inspector):
+def run_mosyco(args, plotting_queue):
     """Start the Mosyco Prototype"""
+    reader_queue = Queue()
+    reader = Reader(args.systems, reader_queue)
+    inspector = Inspector(reader.df.index.copy(),
+                                reader.df[args.models],
+                                args,
+                                reader_queue,
+                                plotting_queue)
     reader.start()
     inspector.start()
 
@@ -52,21 +64,21 @@ class Plotter(QtWidgets.QApplication):
         main_widget: QT Application Widget
 
     """
-    def __init__(self, args, reader, inspector, plotting_queue):
+    def __init__(self, args, plotting_queue):
         super().__init__([__package__])
         self.args = args
         # there is only one model & system in GUI mode
         self.system_name = args.systems[0]
         self.model_name = args.models[0]
-        self.reader = reader
-        self.inspector = inspector
         self.plotting_queue = plotting_queue
 
         # dic attempt
         # defaultdict w/ column names as keys and a deque of equal length
         # for each column...
         # model series
-        self.model_data = inspector.df[[self.model_name]].copy()
+        temp_df = helpers.load_dataframe()
+        self.model_data = temp_df[args.models].copy()
+
         self.data = defaultdict(partial(deque, maxlen=400))
 
 
@@ -83,7 +95,7 @@ class Plotter(QtWidgets.QApplication):
 
     def run(self):
         """Run the Plotter"""
-        self.process = mp.Process(target=run_mosyco, args=(self.reader, self.inspector), daemon=True)
+        self.process = mp.Process(target=run_mosyco, args=(self.args, self.plotting_queue), daemon=True)
         self.process.start()
 
         # start gui

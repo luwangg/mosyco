@@ -36,6 +36,7 @@ class Reader(threading.Thread):
 
         log.info("Initialized reader...")
 
+
     def run(self):
         """Run the Reader Thread."""
         log.debug("Reader has started sending data to queue...")

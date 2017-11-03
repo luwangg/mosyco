@@ -33,18 +33,19 @@ class Mosyco():
             args: The command line arguments from mosyco.parser
         """
         self.args = args
-        self.reader_queue = Queue()
-        plotting_queue = mp.Queue() if args.gui else None
+        reader_queue = Queue()
 
-        self.reader = Reader(args.systems, self.reader_queue)
-        self.inspector = Inspector(self.reader.df.index.copy(),
-                                    self.reader.df[args.models],
-                                    self.args,
-                                    self.reader_queue,
-                                    plotting_queue)
+        if args.gui:
+            plotting_queue = mp.Queue()
+            self.plotter = Plotter(self.args, plotting_queue)
+        else:
+            self.reader = Reader(args.systems, reader_queue)
+            self.inspector = Inspector(self.reader.df.index.copy(),
+                                        self.reader.df[args.models],
+                                        self.args,
+                                        reader_queue,
+                                        None)
 
-        if self.args.gui:
-            self.plotter = Plotter(self.args, self.reader, self.inspector, plotting_queue)
 
     def run(self):
         """Start and run the Mosyco system."""
