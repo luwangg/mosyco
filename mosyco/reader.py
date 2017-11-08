@@ -20,7 +20,7 @@ class Reader(threading.Thread):
     Attributes:
         df (DataFrame): Simulates data sources of running systems and models.
         systems (dict): keys: system names, values: generators for live system data.
-        queue (queue): to communicate with the inspector across threads.
+        queue (Queue): to communicate with the inspector across threads.
     """
     def __init__(self, sources, queue):
         """Return a new Reader object.

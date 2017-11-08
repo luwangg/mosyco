@@ -28,9 +28,12 @@ class Inspector:
     to the deviations, but merely that it may be necessary.
 
     Attributes:
+        args (Namespace): command line arguments
         df (DataFrame): holds model data and is filled with actual values.
-        models (str): list of models.
+        model_map (dict): mapping of systems to models.
         forecast (DataFrame): is filled with forecasts in regular intervals.
+        plotting_queue (Queue): Queue for plotter-inspector communication.
+        reader_queue (Queue): Queue for reader-inspector communication.
         threshold (float): percentage threshold for actual-model deviations.
     """
     def __init__(self, index, model_columns, args, reader_queue, plotting_queue):
