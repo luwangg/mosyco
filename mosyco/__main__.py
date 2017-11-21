@@ -8,6 +8,7 @@ from mosyco import helpers
 def main():
     # read command line arguments & set log level
     args = parser.parse_arguments()
+    print(args)
     log = helpers.setup_logging(args)
 
     log.info('Starting mosyco...')

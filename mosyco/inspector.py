@@ -70,40 +70,40 @@ class Inspector:
         """Start the Inspector."""
         # silence suppresses stdout (to deal with pystan bug)
         log.info("Starting Inspector...")
-        with helpers.silence():
-            for row in self.receive():
-                # sanity check
-                assert len(self.args.systems) == len(row) - 1
+        # with helpers.silence():
+        for row in self.receive():
+            # sanity check
+            assert len(self.args.systems) == len(row) - 1
 
-                # get date
-                date = row['Index']
+            # get date
+            date = row['Index']
 
-                # evaluate system vs model for each system
-                for system_name, val in row.items():
-                    if system_name is not 'Index':
-                        self.eval_actual(date, system_name)
+            # evaluate system vs model for each system
+            for system_name, val in row.items():
+                if system_name is not 'Index':
+                    self.eval_actual(date, system_name)
 
-                # at the end of each period, create a forecast for the following
-                if date.month == 12 and date.day == 31:
-                    # create a period for the following year
-                    period = pd.Period(date.year + 1)
+            # at the end of each period, create a forecast for the following
+            if date.month == 12 and date.day == 31:
+                # create a period for the following year
+                period = pd.Period(date.year + 1)
 
-                    # stop at this date
-                    if date.year == 2005:
-                        break
+                # stop at this date
+                if date.year == 2005:
+                    break
 
-                    # generate a forecasts for each system and evaluate it
-                    # against the model data
-                    for system in self.args.systems:
-                        log.debug(f'Generating {system} forecast for {period}...')
-                        self.forecast_period(period, system)
-                        log.debug(f'{system} forecast was generated for {period}.')
-                        log.debug(f'Evaluating {system} forecast for {period}...')
-                        self.eval_future(period, system)
+                # generate a forecasts for each system and evaluate it
+                # against the model data
+                for system in self.args.systems:
+                    log.debug(f'Generating {system} forecast for {period}...')
+                    self.forecast_period(period, system)
+                    log.debug(f'{system} forecast was generated for {period}.')
+                    log.debug(f'Evaluating {system} forecast for {period}...')
+                    self.eval_future(period, system)
 
-                # if in GUI-Mode, push forecast to plotter
-                if self.args.gui:
-                    self.plotting_queue.put(row)
+            # if in GUI-Mode, push forecast to plotter
+            if self.args.gui:
+                self.plotting_queue.put(row)
 
         log.info("The Inspector has finished!")
 
