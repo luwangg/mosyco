@@ -11,7 +11,7 @@ This module may be extended.
 
 def absolute_deviation(simulated, observed, threshold):
     """Return the absolute deviation of a simulated value from an observed value."""
-    return abs(simulated - observed) > threshold
+    return abs(simulated - observed)
 
 def relative_deviation(simulated, observed, threshold):
     """Return the relative deviation of a simulated value from an observed value."""

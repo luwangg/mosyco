@@ -161,14 +161,26 @@ class Inspector:
         assert not pd.isnull(model)
 
         # calculate the deviation
-        rs = methods.relative_deviation(model, actual, self.threshold)
-        (exceeds_threshold, deviation) = rs
+        # rs = methods.relative_deviation(model, actual, self.threshold)
+        (exceeds_threshold, rel_dev) = methods.relative_deviation(model, actual, self.threshold)
+        abs_dev = methods.absolute_deviation(model, actual, self.threshold)
 
-        if exceeds_threshold:
-            log.debug(f'Model-Actual deviation for '
-                    f'system: {system} '
-                    f'on {date.date()} '
-                    f'by {deviation:.2%}.')
+
+
+
+        # if exceeds_threshold:
+        #     log.debug(f'Model-Actual deviation for '
+        #             f'system: {system} '
+        #             f'on {date.date()} '
+        #             f'by {deviation}.')
+
+        log.debug(f'on {date.date()} - '
+                f'{system}: '
+                f'{exceeds_threshold} '
+                f'IST: {round(actual, 2)} '
+                f'SOLL: {round(model, 2)} '
+                f'ABS DEV: {round(abs_dev, 2)} '
+                f'REL DEV: {rel_dev:.2%}.')
 
     def eval_future(self, period, system):
         """Evaluate the deviation between Model and Forecast data for a period.
@@ -228,10 +240,11 @@ class Inspector:
 
         if self.args.loglevel == logging.DEBUG:
             for date, deviation in outside_deviations.iteritems():
-                log.debug(f'Model-Forecast deviation for '
-                        f'model: {self.model_map[system]} '
-                        f'on {date.date()} '
-                        f'by {deviation:.2%}.')
+                # log.debug(f'Model-Forecast deviation for '
+                #         f'model: {self.model_map[system]} '
+                #         f'on {date.date()} '
+                #         f'by {deviation:.2%}.')
+                pass
 
 
         f_fit = 1.0 - (outside.count() / outside.size)
