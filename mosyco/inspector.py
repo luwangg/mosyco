@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import logging
 import time
+import socket
 
 from fbprophet import Prophet
 
@@ -70,6 +71,8 @@ class Inspector:
         """Start the Inspector."""
         # silence suppresses stdout (to deal with pystan bug)
         log.info("Starting Inspector...")
+        self.sock = socket.socket()
+        self.sock.connect(('localhost', 50008))
         # with helpers.silence():
         for row in self.receive():
             # sanity check
@@ -174,6 +177,8 @@ class Inspector:
         #             f'on {date.date()} '
         #             f'by {deviation}.')
 
+        msg = f'{date.date()}-{system}-{exceeds_threshold}-STOP'
+        self.sock.sendall(msg.encode())
         log.debug(f'on {date.date()} - '
                 f'{system}: '
                 f'{exceeds_threshold} '
