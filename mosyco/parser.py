@@ -41,6 +41,8 @@ def valid_threshold(f):
     if f < 0.0 or f > 1.0:
         msg = f"Invalid threshold value: {f} is not in range [0.0, 1.0]"
         raise argparse.ArgumentTypeError(msg)
+    else:
+        return f
 
 def parse_arguments():
     """Parse the command line arguments."""
